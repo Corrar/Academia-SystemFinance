@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titulo %}Avisos e cobrança{% endblock %}
+{% block conteudo %}
+<div class="topo">
+  <div>
+    <h1>Avisos e cobrança automática</h1>
+    <p class="sub">
+      Última execução: {{ ultima[8:10] ~ '/' ~ ultima[5:7] ~ ' ' ~ ultima[11:16] if ultima else 'nunca' }}
+      · próxima: {{ proxima.strftime('%d/%m às %H:%M') }}
+    </p>
+  </div>
+  <form method="post" action="{{ url_for('executar_cobranca') }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <button class="btn primario">▶ Executar cobrança agora</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Como funciona</h2>
+  <p style="margin-top:0">
+    Todo dia, a partir das <strong>{{ cfg.hora }}h</strong>, o sistema envia avisos automáticos aos alunos ativos nos dias
+    <strong>{% for d in cfg.dias %}{{ (d|abs ~ ' dia(s) antes') if d < 0 else ('no dia do vencimento' if d == 0 else d ~ ' dia(s) depois') }}{{ ', ' if not loop.last }}{% endfor %}</strong>.
+    {% if cfg.dias and cfg.dias[-1] > 0 %}Depois disso, quem continuar devendo recebe um novo lembrete a cada 7 dias.{% endif %}
+    Cada aviso é enviado uma única vez por vencimento.
+  </p>
+  <dl class="dados">
+    <div><dt>E-mail</dt><dd>{% if cfg.email %}<span class="tag enviado">ativo</span> {{ cfg.email }}{% else %}<span class="tag simulado">simulado</span> configure SMTP_* no .env{% endif %}</dd></div>
+    <div><dt>WhatsApp</dt><dd>{% if cfg.whatsapp %}<span class="tag enviado">ativo</span> {{ cfg.whatsapp }}{% else %}<span class="tag simulado">simulado</span> configure WHATSAPP_PROVEDOR no .env{% endif %}</dd></div>
+  </dl>
+  {% if not cfg.email or not cfg.whatsapp %}
+  <div class="info" style="margin:0">No modo <strong>simulado</strong> as mensagens são apenas registradas aqui (nada é enviado de verdade). Assim você pode testar o sistema antes de conectar o e-mail e o WhatsApp.</div>
+  {% endif %}
+</div>
+
+<div class="card" style="padding:6px 12px">
+  <div class="tabela-wrap">
+  <table>
+    <thead><tr><th>Quando</th><th>Aluno</th><th>Canal</th><th>Destino</th><th>Tipo</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for n in avisos %}
+      <tr>
+        <td style="white-space:nowrap">{{ n.criado_em[8:10] }}/{{ n.criado_em[5:7] }} {{ n.criado_em[11:16] }}</td>
+        <td>{% if n.aluno_id %}<a href="{{ url_for('aluno_detalhe', aluno_id=n.aluno_id) }}">{{ n.nome }}</a>{% else %}-{% endif %}</td>
+        <td>{{ 'E-mail' if n.canal == 'email' else 'WhatsApp' }}</td>
+        <td style="font-size:13px">{{ n.destino }}</td>
+        <td>{{ n.tipo }}</td>
+        <td><span class="tag {{ n.status }}">{{ n.status }}</span>{% if n.erro %}<div style="font-size:12px;color:var(--vermelho);max-width:280px">{{ n.erro }}</div>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="vazio">Nenhum aviso enviado ainda.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

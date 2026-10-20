@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block titulo %}{{ aluno.nome }}{% endblock %}
+{% block conteudo %}
+<div class="topo">
+  <div>
+    <h1>{{ aluno.nome }} <span class="tag {{ aluno.status }}" style="vertical-align:middle">{{ STATUS_ROTULO[aluno.status] }}</span></h1>
+    <p class="sub">Inscrito desde {{ aluno.data_inscricao|data_br }} · plano {{ aluno.plano_nome or '-' }} ({{ aluno.plano_valor|moeda }})</p>
+  </div>
+  <div class="acoes">
+    <a class="btn" href="{{ url_for('aluno_editar', aluno_id=aluno.id) }}">✏️ Editar</a>
+    <form method="post" action="{{ url_for('alternar_ativo', aluno_id=aluno.id) }}"
+          onsubmit="return confirm('{{ 'Cancelar a matrícula deste aluno? Ele deixa de receber cobranças.' if aluno.ativo else 'Reativar matrícula?' }}')">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn {{ 'perigo' if aluno.ativo }}">{{ '⛔ Cancelar matrícula' if aluno.ativo else '✅ Reativar' }}</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h2>Validade</h2>
+    <div class="validade-box">
+      <div>
+        <div class="grande">{{ aluno.data_vencimento|data_br }}</div>
+        <div class="{{ 'atraso' if aluno.dias < 0 }}">
+          {% if aluno.dias > 0 %}faltam {{ aluno.dias }} dia(s){% elif aluno.dias == 0 %}vence hoje{% else %}vencido há {{ -aluno.dias }} dia(s){% endif %}
+        </div>
+      </div>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--borda);margin:16px 0">
+    <dl class="dados">
+      <div><dt>CPF</dt><dd>{{ aluno.cpf or '-' }}</dd></div>
+      <div><dt>Nascimento</dt><dd>{{ aluno.data_nascimento|data_br }}</dd></div>
+      <div><dt>WhatsApp</dt><dd>{{ aluno.telefone or '-' }}</dd></div>
+      <div><dt>E-mail</dt><dd>{{ aluno.email or '-' }}</dd></div>
+    </dl>
+    {% if aluno.observacoes %}<p style="margin:0;color:var(--suave)">📝 {{ aluno.observacoes }}</p>{% endif %}
+  </div>
+
+  <div class="card" id="pagamento">
+    <h2>💵 Registrar pagamento</h2>
+    <form method="post" action="{{ url_for('registrar_pagamento', aluno_id=aluno.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <div class="form-grid">
+        <div class="campo"><label>Valor (R$)</label><input name="valor" value="{{ '%.2f'|format(aluno.plano_valor or 0) }}" required></div>
+        <div class="campo"><label>Data do pagamento</label><input type="date" name="data_pagamento" value="{{ hoje.isoformat() }}" required></div>
+        <div class="campo"><label>Forma</label><select name="forma">{% for f in formas %}<option>{{ f }}</option>{% endfor %}</select></div>
+        <div class="campo"><label>Nova validade</label><input type="date" name="nova_validade" value="{{ validade_sugerida }}" required></div>
+      </div>
+      <div class="linha-botoes"><button class="btn primario">Confirmar pagamento</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>📣 Enviar aviso de vencimento</h2>
+  <div class="msg-preview">{{ preview }}</div>
+  <div class="linha-botoes">
+    {% for canal, rotulo, ok in [('email', '✉️ Enviar e-mail', aluno.email), ('whatsapp', '📱 Enviar WhatsApp (API)', aluno.telefone), ('ambos', 'Enviar pelos dois', aluno.email or aluno.telefone)] %}
+    <form method="post" action="{{ url_for('avisar_aluno', aluno_id=aluno.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="canal" value="{{ canal }}">
+      <button class="btn {{ 'whats' if canal == 'whatsapp' }}" {{ 'disabled' if not ok }}>{{ rotulo }}</button>
+    </form>
+    {% endfor %}
+    {% if link_wa %}<a class="btn" href="{{ link_wa }}" target="_blank" rel="noopener">Abrir no WhatsApp (envio manual)</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h2>Histórico de pagamentos</h2>
+    <table>
+      <thead><tr><th>Data</th><th class="num">Valor</th><th>Forma</th><th>Validade</th><th></th></tr></thead>
+      <tbody>
+      {% for p in pagamentos %}
+        <tr>
+          <td>{{ p.data_pagamento|data_br }}</td>
+          <td class="num">{{ p.valor|moeda }}</td>
+          <td>{{ p.forma or '-' }}</td>
+          <td>até {{ p.nova_validade|data_br }}</td>
+          <td class="num">
+            <form method="post" action="{{ url_for('estornar_pagamento', pagamento_id=p.id) }}" onsubmit="return confirm('Estornar este pagamento?')">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="btn pequeno perigo" title="Estornar">↺</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="vazio">Nenhum pagamento registrado.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Avisos enviados</h2>
+    <table>
+      <thead><tr><th>Quando</th><th>Canal</th><th>Tipo</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for n in avisos %}
+        <tr>
+          <td>{{ n.criado_em[8:10] }}/{{ n.criado_em[5:7] }} {{ n.criado_em[11:16] }}</td>
+          <td>{{ 'E-mail' if n.canal == 'email' else 'WhatsApp' }}</td>
+          <td>{{ n.tipo }}</td>
+          <td><span class="tag {{ n.status }}" title="{{ n.erro or '' }}">{{ n.status }}</span></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="vazio">Nenhum aviso enviado ainda.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('aluno_excluir', aluno_id=aluno.id) }}"
+      onsubmit="return confirm('Excluir DEFINITIVAMENTE este aluno e todo o histórico? Prefira cancelar a matrícula.')">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <button class="btn pequeno perigo">Excluir cadastro</button>
+</form>
+{% endblock %}

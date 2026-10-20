@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Novo aluno' if novo else 'Editar aluno' }}{% endblock %}
+{% block conteudo %}
+<h1>{{ 'Novo aluno' if novo else 'Editar: ' ~ aluno.nome }}</h1>
+<p class="sub">{{ 'Cadastre um novo mensalista.' if novo else 'Atualize os dados do cadastro.' }}</p>
+
+<form method="post" class="card">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <div class="form-grid">
+    <div class="campo largo"><label>Nome completo *</label><input name="nome" value="{{ aluno.nome or '' }}" required></div>
+    <div class="campo"><label>CPF</label><input name="cpf" value="{{ aluno.cpf or '' }}" placeholder="000.000.000-00"></div>
+    <div class="campo"><label>Data de nascimento</label><input type="date" name="data_nascimento" value="{{ aluno.data_nascimento or '' }}"></div>
+    <div class="campo"><label>WhatsApp</label><input name="telefone" value="{{ aluno.telefone or '' }}" placeholder="(11) 99999-0000"></div>
+    <div class="campo"><label>E-mail</label><input type="email" name="email" value="{{ aluno.email or '' }}" placeholder="aluno@email.com"></div>
+    <div class="campo">
+      <label>Plano</label>
+      <select name="plano_id" id="plano">
+        {% for p in planos %}
+          <option value="{{ p.id }}" data-dias="{{ p.duracao_dias }}" {{ 'selected' if aluno.plano_id == p.id }}>
+            {{ p.nome }} – {{ p.valor|moeda }} ({{ p.duracao_dias }} dias){{ '' if p.ativo else ' [inativo]' }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo"><label>Data de inscrição</label><input type="date" name="data_inscricao" id="inscricao" value="{{ aluno.data_inscricao or '' }}"></div>
+    <div class="campo"><label>Validade (vencimento) *</label><input type="date" name="data_vencimento" id="vencimento" value="{{ aluno.data_vencimento or '' }}" required></div>
+    <div class="campo largo"><label>Observações</label><textarea name="observacoes" rows="2">{{ aluno.observacoes or '' }}</textarea></div>
+    {% if novo %}
+    <div class="campo largo">
+      <label class="check"><input type="checkbox" name="pago_agora" value="1" checked> Primeira mensalidade paga no ato da inscrição</label>
+    </div>
+    <div class="campo">
+      <label>Forma de pagamento</label>
+      <select name="forma">{% for f in formas %}<option>{{ f }}</option>{% endfor %}</select>
+    </div>
+    {% endif %}
+  </div>
+  <div class="linha-botoes">
+    <button class="btn primario">Salvar</button>
+    <a class="btn" href="{{ url_for('aluno_detalhe', aluno_id=aluno.id) if not novo else url_for('alunos') }}">Cancelar</a>
+  </div>
+</form>
+
+{% if novo %}
+<script>
+  // Sugere a validade = inscrição + duração do plano
+  const plano = document.getElementById('plano'), insc = document.getElementById('inscricao'), venc = document.getElementById('vencimento');
+  function sugerir() {
+    const dias = +plano.selectedOptions[0]?.dataset.dias || 30;
+    const d = new Date(insc.value + 'T12:00:00');
+    if (isNaN(d)) return;
+    d.setDate(d.getDate() + dias);
+    venc.value = d.toISOString().slice(0, 10);
+  }
+  plano.addEventListener('change', sugerir); insc.addEventListener('change', sugerir);
+</script>
+{% endif %}
+{% endblock %}

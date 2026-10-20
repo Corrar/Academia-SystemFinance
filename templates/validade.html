@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titulo %}Consulta de validade{% endblock %}
+{% block conteudo %}
+<h1>Consulta de validade</h1>
+<p class="sub">Digite o nome, CPF ou telefone do aluno para ver até quando o plano é válido.</p>
+
+<form class="filtros" method="get">
+  <input type="search" name="q" value="{{ termo }}" placeholder="Nome, CPF ou telefone…" autofocus>
+  <button class="btn primario">Consultar</button>
+</form>
+
+{% if termo %}
+  {% for a in resultados %}
+  <div class="card">
+    <div class="validade-box" style="justify-content:space-between">
+      <div>
+        <h2 style="margin-bottom:4px"><a href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">{{ a.nome }}</a></h2>
+        <div style="color:var(--suave);font-size:14px">{{ a.plano_nome or 'Sem plano' }} · CPF {{ a.cpf or '-' }}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="color:var(--suave);font-size:13px">Válido até</div>
+        <div class="grande">{{ a.data_vencimento|data_br }}</div>
+        <div>
+          <span class="tag {{ a.status }}">{{ STATUS_ROTULO[a.status] }}</span>
+          <span class="{{ 'atraso' if a.dias < 0 }}" style="font-size:14px;margin-left:6px">
+            {% if a.dias > 0 %}faltam {{ a.dias }} dia(s){% elif a.dias == 0 %}vence hoje{% else %}{{ -a.dias }} dia(s) em atraso{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="card vazio">Nenhum aluno encontrado para “{{ termo }}”.</div>
+  {% endfor %}
+{% endif %}
+
+<div class="card">
+  <h2>Próximos vencimentos (15 dias)</h2>
+  <table>
+    <thead><tr><th>Aluno</th><th>Plano</th><th>Vencimento</th><th class="num">Faltam</th></tr></thead>
+    <tbody>
+    {% for a in proximos %}
+      <tr>
+        <td><a href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">{{ a.nome }}</a></td>
+        <td>{{ a.plano_nome or '-' }}</td>
+        <td>{{ a.data_vencimento|data_br }}</td>
+        <td class="num">{{ 'hoje' if a.dias == 0 else a.dias ~ ' dia(s)' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="vazio">Nenhum vencimento nos próximos 15 dias.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

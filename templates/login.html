@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar · {{ academia }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="login-pg">
+  <form method="post" class="card">
+    <h1>🏋️ {{ academia }}</h1>
+    <p class="sub">Acesso ao painel de mensalidades</p>
+    {% for cat, msg in get_flashed_messages(with_categories=true) %}
+      <div class="flash {{ cat }}">{{ msg }}</div>
+    {% endfor %}
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div class="campo"><label>Usuário</label><input name="usuario" required autofocus></div>
+    <div class="campo" style="margin-top:12px"><label>Senha</label><input name="senha" type="password" required></div>
+    <div class="linha-botoes"><button class="btn primario" style="width:100%;justify-content:center">Entrar</button></div>
+  </form>
+</div>
+</body>
+</html>

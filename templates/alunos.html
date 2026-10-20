@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}Inscritos{% endblock %}
+{% block conteudo %}
+<div class="topo">
+  <div>
+    <h1>Inscritos</h1>
+    <p class="sub">{{ alunos|length }} aluno(s) encontrado(s)</p>
+  </div>
+  <a class="btn primario" href="{{ url_for('aluno_novo') }}">+ Novo aluno</a>
+</div>
+
+<form class="filtros" method="get">
+  <input type="search" name="q" value="{{ termo }}" placeholder="Buscar por nome, CPF, telefone ou e-mail…" autofocus>
+  <select name="status" onchange="this.form.submit()">
+    <option value="">Todas as situações</option>
+    {% for k, v in STATUS_ROTULO.items() %}
+      <option value="{{ k }}" {{ 'selected' if status == k }}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn">Buscar</button>
+</form>
+
+<div class="card" style="padding:6px 12px">
+  <div class="tabela-wrap">
+  <table>
+    <thead><tr><th>Nome</th><th>CPF</th><th>WhatsApp</th><th>Plano</th><th>Validade</th><th class="num">Dias</th><th>Situação</th></tr></thead>
+    <tbody>
+    {% for a in alunos %}
+      <tr>
+        <td><a href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}"><strong>{{ a.nome }}</strong></a></td>
+        <td>{{ a.cpf or '-' }}</td>
+        <td>{{ a.telefone or '-' }}</td>
+        <td>{{ a.plano_nome or '-' }}{% if a.plano_valor %} <span style="color:var(--suave)">· {{ a.plano_valor|moeda }}</span>{% endif %}</td>
+        <td>{{ a.data_vencimento|data_br }}</td>
+        <td class="num {{ 'atraso' if a.dias < 0 and a.ativo }}">{{ a.dias }}</td>
+        <td><span class="tag {{ a.status }}">{{ STATUS_ROTULO[a.status] }}</span></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="vazio">Nenhum aluno encontrado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+<p class="sub" style="font-size:13px">Dias: positivo = dias restantes até o vencimento · negativo = dias em atraso.</p>
+{% endblock %}

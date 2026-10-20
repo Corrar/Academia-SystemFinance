@@ -1,0 +1,226 @@
+"""Envio de avisos de vencimento por e-mail (SMTP) e WhatsApp."""
+import smtplib
+import ssl
+from datetime import date
+from email.message import EmailMessage
+from urllib.parse import quote
+
+import requests
+
+import config
+import db
+
+
+# ---------------------------------------------------------------- formatação
+
+def moeda(valor) -> str:
+    valor = float(valor or 0)
+    return "R$ " + f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def data_br(iso: str | None) -> str:
+    return date.fromisoformat(iso).strftime("%d/%m/%Y") if iso else "-"
+
+
+def normalizar_telefone(telefone: str | None) -> str:
+    """Retorna só dígitos no formato internacional (ex.: 5511999990000)."""
+    digitos = "".join(c for c in (telefone or "") if c.isdigit())
+    if not digitos:
+        return ""
+    if digitos.startswith("0"):
+        digitos = digitos.lstrip("0")
+    if len(digitos) in (10, 11):  # DDD + número, sem código do país
+        digitos = "55" + digitos
+    return digitos
+
+
+def tipo_aviso(dias: int) -> str:
+    if dias > 0:
+        return "lembrete"
+    if dias == 0:
+        return "vencimento"
+    return "atraso"
+
+
+def montar_mensagem(aluno: dict) -> tuple[str, str]:
+    """Retorna (assunto, corpo) conforme a situação do aluno."""
+    dias = db.dias_para_vencer(aluno["data_vencimento"])
+    primeiro_nome = aluno["nome"].split()[0]
+    venc = data_br(aluno["data_vencimento"])
+    valor = moeda(aluno.get("plano_valor"))
+    academia = config.ACADEMIA_NOME
+
+    if dias > 0:
+        assunto = f"{academia}: sua mensalidade vence em {dias} dia(s)"
+        texto = (
+            f"Olá, {primeiro_nome}! 💪\n\n"
+            f"Passando para lembrar que sua mensalidade na {academia} vence em "
+            f"*{venc}* (daqui a {dias} dia(s)).\nValor: *{valor}*."
+        )
+    elif dias == 0:
+        assunto = f"{academia}: sua mensalidade vence hoje"
+        texto = (
+            f"Olá, {primeiro_nome}!\n\n"
+            f"Sua mensalidade na {academia} vence *hoje ({venc})*.\nValor: *{valor}*."
+        )
+    else:
+        atraso = -dias
+        assunto = f"{academia}: mensalidade em atraso há {atraso} dia(s)"
+        texto = (
+            f"Olá, {primeiro_nome}.\n\n"
+            f"Identificamos que sua mensalidade na {academia} venceu em *{venc}* "
+            f"e está em aberto há {atraso} dia(s).\nValor: *{valor}*.\n\n"
+            "Regularize para continuar treinando sem interrupções."
+        )
+
+    if config.CHAVE_PIX:
+        texto += f"\n\nPague via PIX: {config.CHAVE_PIX}"
+    texto += "\n\nSe já pagou, por favor desconsidere esta mensagem."
+    if config.ACADEMIA_TELEFONE:
+        texto += f"\nDúvidas: {config.ACADEMIA_TELEFONE}"
+    return assunto, texto
+
+
+def link_whatsapp(aluno: dict) -> str | None:
+    """Link wa.me com a mensagem pronta (envio manual pelo celular/WhatsApp Web)."""
+    numero = normalizar_telefone(aluno.get("telefone"))
+    if not numero:
+        return None
+    _, texto = montar_mensagem(aluno)
+    return f"https://wa.me/{numero}?text={quote(texto)}"
+
+
+# ---------------------------------------------------------------- e-mail
+
+def enviar_email(destino: str, assunto: str, texto: str) -> str:
+    """Retorna 'enviado' ou 'simulado'. Lança exceção em caso de erro."""
+    if not config.SMTP_HOST:
+        return "simulado"
+    msg = EmailMessage()
+    msg["From"] = f"{config.ACADEMIA_NOME} <{config.SMTP_REMETENTE}>"
+    msg["To"] = destino
+    msg["Subject"] = assunto
+    msg.set_content(texto.replace("*", ""))
+    contexto = ssl.create_default_context()
+    if config.SMTP_SEGURANCA == "ssl":
+        with smtplib.SMTP_SSL(config.SMTP_HOST, config.SMTP_PORTA, context=contexto, timeout=30) as s:
+            if config.SMTP_USUARIO:
+                s.login(config.SMTP_USUARIO, config.SMTP_SENHA)
+            s.send_message(msg)
+    else:
+        with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORTA, timeout=30) as s:
+            s.starttls(context=contexto)
+            if config.SMTP_USUARIO:
+                s.login(config.SMTP_USUARIO, config.SMTP_SENHA)
+            s.send_message(msg)
+    return "enviado"
+
+
+# ---------------------------------------------------------------- WhatsApp
+
+def _zapi(numero: str, texto: str) -> None:
+    url = f"https://api.z-api.io/instances/{config.ZAPI_INSTANCIA}/token/{config.ZAPI_TOKEN}/send-text"
+    headers = {"Client-Token": config.ZAPI_CLIENT_TOKEN} if config.ZAPI_CLIENT_TOKEN else {}
+    r = requests.post(url, json={"phone": numero, "message": texto}, headers=headers, timeout=30)
+    r.raise_for_status()
+
+
+def _evolution(numero: str, texto: str) -> None:
+    url = f"{config.EVOLUTION_URL}/message/sendText/{config.EVOLUTION_INSTANCIA}"
+    r = requests.post(url, json={"number": numero, "text": texto},
+                      headers={"apikey": config.EVOLUTION_APIKEY}, timeout=30)
+    r.raise_for_status()
+
+
+def _meta(numero: str, texto: str, aluno: dict) -> None:
+    url = f"https://graph.facebook.com/v21.0/{config.META_PHONE_ID}/messages"
+    if config.META_TEMPLATE:
+        # Template aprovado com 3 variáveis: {{1}} nome, {{2}} vencimento, {{3}} valor
+        corpo = {
+            "messaging_product": "whatsapp", "to": numero, "type": "template",
+            "template": {
+                "name": config.META_TEMPLATE,
+                "language": {"code": config.META_TEMPLATE_IDIOMA},
+                "components": [{"type": "body", "parameters": [
+                    {"type": "text", "text": aluno["nome"].split()[0]},
+                    {"type": "text", "text": data_br(aluno["data_vencimento"])},
+                    {"type": "text", "text": moeda(aluno.get("plano_valor"))},
+                ]}],
+            },
+        }
+    else:
+        corpo = {"messaging_product": "whatsapp", "to": numero, "type": "text", "text": {"body": texto}}
+    r = requests.post(url, json=corpo, headers={"Authorization": f"Bearer {config.META_TOKEN}"}, timeout=30)
+    r.raise_for_status()
+
+
+def _twilio(numero: str, texto: str) -> None:
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{config.TWILIO_SID}/Messages.json"
+    dados = {"From": f"whatsapp:{config.TWILIO_NUMERO}", "To": f"whatsapp:+{numero}", "Body": texto}
+    r = requests.post(url, data=dados, auth=(config.TWILIO_SID, config.TWILIO_TOKEN), timeout=30)
+    r.raise_for_status()
+
+
+def enviar_whatsapp(numero: str, texto: str, aluno: dict) -> str:
+    provedor = config.WHATSAPP_PROVEDOR
+    if provedor == "zapi":
+        _zapi(numero, texto)
+    elif provedor == "evolution":
+        _evolution(numero, texto)
+    elif provedor == "meta":
+        _meta(numero, texto, aluno)
+    elif provedor == "twilio":
+        _twilio(numero, texto)
+    else:
+        return "simulado"
+    return "enviado"
+
+
+# ---------------------------------------------------------------- orquestração
+
+def registrar(aluno_id, canal, tipo, chave, destino, status, mensagem, erro=None) -> None:
+    with db.conectar() as con:
+        con.execute(
+            "INSERT INTO notificacoes (aluno_id, canal, tipo, chave, destino, status, mensagem, erro) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (aluno_id, canal, tipo, chave, destino, status, mensagem, erro),
+        )
+
+
+def ja_enviado(aluno_id: int, chave: str, canal: str) -> bool:
+    with db.conectar() as con:
+        return con.execute(
+            "SELECT 1 FROM notificacoes WHERE aluno_id = ? AND chave = ? AND canal = ? "
+            "AND status IN ('enviado','simulado') LIMIT 1",
+            (aluno_id, chave, canal),
+        ).fetchone() is not None
+
+
+def notificar(aluno: dict, canais=("email", "whatsapp"), chave: str | None = None,
+              tipo: str | None = None) -> dict:
+    """Envia o aviso nos canais pedidos. Retorna {canal: status} (status ou 'sem contato')."""
+    assunto, texto = montar_mensagem(aluno)
+    tipo = tipo or tipo_aviso(db.dias_para_vencer(aluno["data_vencimento"]))
+    resultado = {}
+
+    for canal in canais:
+        if chave and ja_enviado(aluno["id"], chave, canal):
+            resultado[canal] = "já enviado"
+            continue
+        if canal == "email":
+            destino = (aluno.get("email") or "").strip()
+            enviar = lambda: enviar_email(destino, assunto, texto)
+        else:
+            destino = normalizar_telefone(aluno.get("telefone"))
+            enviar = lambda: enviar_whatsapp(destino, texto, aluno)
+        if not destino:
+            resultado[canal] = "sem contato"
+            continue
+        try:
+            status = enviar()
+            registrar(aluno["id"], canal, tipo, chave, destino, status, texto)
+        except Exception as e:  # noqa: BLE001 - registra qualquer falha de envio
+            status = "erro"
+            registrar(aluno["id"], canal, tipo, chave, destino, status, texto, str(e)[:500])
+        resultado[canal] = status
+    return resultado
