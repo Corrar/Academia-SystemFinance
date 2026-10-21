@@ -3,3 +3,7 @@
 __pycache__/
 .venv/
 .secret_key
+# Graphify: o cache é local; o grafo (graph.json, GRAPH_REPORT.md) é versionado
+graphify-out/cache/
+graphify-out/graph.html
+graphify-out/.graphify_*

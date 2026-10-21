@@ -1,0 +1,5 @@
+# Arquivos binários e de terceiros que não fazem parte do código
+static/fonts/
+docs/assets/
+*.png
+*.woff2

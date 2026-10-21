@@ -175,10 +175,20 @@ if USA_POSTGRES:
         return _ConexaoPG(con)
 
 
+class _ConexaoSQLite(sqlite3.Connection):
+    """Como a do Postgres: no fim do `with` grava (ou desfaz) e fecha."""
+
+    def __exit__(self, *erro):
+        try:
+            return super().__exit__(*erro)
+        finally:
+            self.close()
+
+
 def conectar():
     if USA_POSTGRES:
         return _conexao_pg()
-    con = sqlite3.connect(config.DB_PATH)
+    con = sqlite3.connect(config.DB_PATH, factory=_ConexaoSQLite)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
     return con

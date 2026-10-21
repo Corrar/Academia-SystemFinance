@@ -135,6 +135,7 @@ def login():
             session.clear()
             session.permanent = True
             session["logado"] = True
+            session["csrf"] = secrets.token_hex(16)  # token novo a cada login
             proximo = request.args.get("proximo", "")
             return redirect(proximo if proximo.startswith("/") and not proximo.startswith("//") else url_for("dashboard"))
         db.registrar_falha_login(ip)

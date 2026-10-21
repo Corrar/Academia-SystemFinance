@@ -4,3 +4,9 @@
 .secret_key
 __pycache__
 docs
+graphify-out
+.claude
+.graphifyignore
+tests
+requirements-dev.txt
+CLAUDE.md
