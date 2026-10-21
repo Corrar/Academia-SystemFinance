@@ -1,0 +1,6 @@
+.venv
+*.db
+.env
+.secret_key
+__pycache__
+docs

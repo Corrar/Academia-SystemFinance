@@ -2,12 +2,11 @@
 import json
 import os
 import secrets
-import sqlite3
-import time
 from datetime import date, datetime, timedelta
 from functools import wraps
 
-from flask import Flask, Response, abort, flash, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, flash, jsonify, redirect, render_template, request, session, url_for
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import ajustes
 import cobranca
@@ -19,6 +18,9 @@ from notificacoes import data_br, moeda
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
+if config.NA_VERCEL:
+    # A Vercel fica na frente do app: usa o IP real do visitante e o https original
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
@@ -56,6 +58,7 @@ def contexto_global():
         "academia": ajustes.obter("academia_nome"),
         "empresa": ajustes.empresa(),
         "SENHA_PADRAO": config.SENHA_PADRAO,
+        "BANCO_TEMPORARIO": config.BANCO_TEMPORARIO,
         "usuario": config.ADMIN_USUARIO.capitalize(),
         "STATUS_ROTULO": STATUS_ROTULO,
         "TONS": TONS,
@@ -87,7 +90,7 @@ def proteger_csrf():
 
 
 # Páginas abertas ao público (sem login): documentos legais
-PUBLICAS = {"login", "static", "privacidade", "termos", "reembolso"}
+PUBLICAS = {"login", "static", "privacidade", "termos", "reembolso", "cron_cobranca"}
 
 CSP = ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
        "script-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; "
@@ -108,15 +111,13 @@ def cabecalhos_seguranca(resp):
     return resp
 
 
-# Bloqueio após tentativas erradas de login (por IP, em memória)
+# Bloqueio após tentativas erradas de login (por IP, guardado no banco para valer
+# entre processos e instâncias na nuvem)
 TENTATIVAS_MAX, JANELA_SEG = 5, 15 * 60
-_falhas: dict[str, list[float]] = {}
 
 
 def _bloqueado(ip: str) -> bool:
-    agora = time.time()
-    _falhas[ip] = [t for t in _falhas.get(ip, []) if agora - t < JANELA_SEG]
-    return len(_falhas[ip]) >= TENTATIVAS_MAX
+    return db.falhas_recentes(ip, JANELA_SEG) >= TENTATIVAS_MAX
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -129,13 +130,13 @@ def login():
         usuario_ok = secrets.compare_digest(request.form.get("usuario", ""), config.ADMIN_USUARIO)
         senha_ok = secrets.compare_digest(request.form.get("senha", ""), config.ADMIN_SENHA)
         if usuario_ok and senha_ok:
-            _falhas.pop(ip, None)
+            db.limpar_falhas_login(ip)
             session.clear()
             session.permanent = True
             session["logado"] = True
             proximo = request.args.get("proximo", "")
             return redirect(proximo if proximo.startswith("/") and not proximo.startswith("//") else url_for("dashboard"))
-        _falhas.setdefault(ip, []).append(time.time())
+        db.registrar_falha_login(ip)
         flash("Usuário ou senha inválidos.", "erro")
     return render_template("login.html")
 
@@ -208,11 +209,11 @@ def aluno_novo():
                     "INSERT INTO alunos (nome, cpf, email, telefone, plano_id, data_inscricao, data_vencimento, "
                     "observacoes, aceita_email, aceita_whatsapp, termos_aceitos_em) VALUES "
                     "(:nome,:cpf,:email,:telefone,:plano_id,:data_inscricao,:data_vencimento,:observacoes,"
-                    ":aceita_email,:aceita_whatsapp,:termos_aceitos_em)",
+                    ":aceita_email,:aceita_whatsapp,:termos_aceitos_em) RETURNING id",
                     {**dados, "termos_aceitos_em": datetime.now().isoformat(timespec="seconds")
                      if request.form.get("termos_aceitos") else None},
                 )
-                aluno_id = cur.lastrowid
+                aluno_id = cur.fetchone()[0]
                 if request.form.get("pago_agora") and dados["plano_id"]:
                     valor = con.execute("SELECT valor FROM planos WHERE id = ?", (dados["plano_id"],)).fetchone()[0]
                     con.execute(
@@ -221,7 +222,7 @@ def aluno_novo():
                         (aluno_id, valor, db.hoje().isoformat(), None, dados["data_vencimento"],
                          request.form.get("forma") or "PIX"),
                     )
-        except sqlite3.IntegrityError:
+        except db.ErroIntegridade:
             flash("Já existe um aluno com este CPF.", "erro")
             return render_template("aluno_form.html", aluno=dados, planos=planos, novo=True, formas=FORMAS_PAGAMENTO)
         flash(f"Aluno {dados['nome']} cadastrado!", "ok")
@@ -255,7 +256,7 @@ def aluno_editar(aluno_id):
                     "termos_aceitos_em=COALESCE(termos_aceitos_em, :termos_aceitos_em) WHERE id=:id",
                     dados,
                 )
-        except sqlite3.IntegrityError:
+        except db.ErroIntegridade:
             flash("Já existe um aluno com este CPF.", "erro")
             return render_template("aluno_form.html", aluno=dados, planos=planos, novo=False)
         flash("Cadastro atualizado.", "ok")
@@ -454,6 +455,16 @@ def avisos():
     )
 
 
+@app.route("/api/cron/cobranca")
+def cron_cobranca():
+    """Chamado uma vez por dia pelo Cron da Vercel (ver vercel.json)."""
+    esperado = f"Bearer {config.CRON_SECRET}"
+    if not config.CRON_SECRET or not secrets.compare_digest(request.headers.get("Authorization", ""), esperado):
+        abort(401)
+    r = cobranca.executar_cobranca()
+    return jsonify({k: r[k] for k in ("avaliados", "avisados", "erros", "avisos_apagados")})
+
+
 @app.post("/cobranca/executar")
 @login_obrigatorio
 def executar_cobranca():
@@ -638,8 +649,14 @@ def email_preview():
 
 db.iniciar_banco()
 
-# Evita dois agendadores quando o modo debug recarrega o processo
-if os.environ.get("DEBUG") != "1" or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+if not app.secret_key:
+    # Disco somente leitura (Vercel) e sem SECRET_KEY: gera uma vez e guarda no banco
+    app.secret_key = db.get_sistema("secret_key") or secrets.token_hex(32)
+    db.set_sistema("secret_key", app.secret_key)
+
+# Na Vercel não há processo contínuo: a cobrança diária roda pelo Cron (/api/cron/cobranca).
+# Fora dela, um agendador interno roda a cobrança (evita dois quando o debug recarrega o processo).
+if not config.NA_VERCEL and (os.environ.get("DEBUG") != "1" or os.environ.get("WERKZEUG_RUN_MAIN") == "true"):
     cobranca.iniciar_agendador()
 
 if __name__ == "__main__":

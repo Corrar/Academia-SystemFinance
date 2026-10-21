@@ -34,11 +34,12 @@ def main() -> None:
             inscricao = vencimento - timedelta(days=plano["duracao_dias"] * rnd.randint(1, 6))
             cur = con.execute(
                 "INSERT INTO alunos (nome, cpf, email, telefone, plano_id, data_inscricao, data_vencimento, ativo) "
-                "VALUES (?,?,?,?,?,?,?,?)",
+                "VALUES (?,?,?,?,?,?,?,?) RETURNING id",
                 (completo, f"{rnd.randint(100,999)}.{rnd.randint(100,999)}.{rnd.randint(100,999)}-{i:02d}",
                  f"{nome.lower()}.{i}@exemplo.com", f"(11) 9{rnd.randint(1000,9999)}-{rnd.randint(1000,9999)}",
                  plano["id"], inscricao.isoformat(), vencimento.isoformat(), 0 if i % 13 == 12 else 1),
             )
+            aluno_id = cur.fetchone()[0]
             # histórico de pagamentos: um por ciclo, da inscrição até o vencimento atual
             ini = inscricao
             while ini < vencimento:
@@ -47,7 +48,7 @@ def main() -> None:
                 con.execute(
                     "INSERT INTO pagamentos (aluno_id, valor, data_pagamento, validade_anterior, nova_validade, forma) "
                     "VALUES (?,?,?,?,?,?)",
-                    (cur.lastrowid, plano["valor"], pago_em.isoformat(), ini.isoformat(), fim.isoformat(),
+                    (aluno_id, plano["valor"], pago_em.isoformat(), ini.isoformat(), fim.isoformat(),
                      rnd.choice(["PIX", "PIX", "PIX", "Dinheiro", "Cartão de crédito", "Cartão de débito"])),
                 )
                 ini = fim

@@ -1,10 +1,39 @@
-# 🏋️ Sistema de Cobrança para Academia
+<div align="center">
 
-Sistema simples para controlar mensalistas: cadastro de inscritos, validade dos planos,
-pagamentos, faturamento do mês e **avisos automáticos de vencimento por e-mail e WhatsApp**.
+<img src="docs/assets/banner.svg" alt="Academia: cobrança automática de mensalidades" width="600">
 
-Feito em **Python + Flask + SQLite**: não precisa instalar banco de dados. Roda em Windows, Mac ou Linux
-com Python 3.10 ou mais novo.
+<p><strong>Sistema web de cobrança automática para academias: mensalistas, validade dos planos, inadimplentes e avisos de vencimento por e-mail e WhatsApp.</strong></p>
+
+<a href="#pré-visualização"><img alt="status: pronto" src="https://img.shields.io/badge/status-pronto-2ea043"></a>
+<img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776ab?logo=python&logoColor=white">
+<img alt="Flask 3" src="https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white">
+<img alt="SQLite ou Postgres" src="https://img.shields.io/badge/banco-SQLite%20%C2%B7%20Postgres-4169e1?logo=postgresql&logoColor=white">
+<a href="#publicar-na-vercel"><img alt="Vercel" src="https://img.shields.io/badge/Vercel-deploy-000000?logo=vercel&logoColor=white"></a>
+<img alt="WhatsApp: Z-API, Evolution, Meta, Twilio" src="https://img.shields.io/badge/WhatsApp-Z--API%20%C2%B7%20Meta%20%C2%B7%20Twilio-25d366?logo=whatsapp&logoColor=white">
+<a href="docs/CONFORMIDADE.md"><img alt="LGPD revisado" src="https://img.shields.io/badge/LGPD-revisado-6d28d9"></a>
+<a href="docs/CONFORMIDADE.md#4-acessibilidade-wcag-21-aa"><img alt="WCAG 2.1 AA" src="https://img.shields.io/badge/WCAG-2.1%20AA-0f766e"></a>
+
+</div>
+
+---
+
+## Pré-visualização
+
+<p align="center">
+  <img src="docs/assets/dashboard.png" alt="Dashboard: mensalistas ativos, faturado no mês, receita prevista e cards dos inadimplentes com as etapas de aviso" width="100%">
+</p>
+<p align="center"><sub>Captura real do painel, com alunos fictícios de demonstração.</sub></p>
+
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="docs/assets/inscritos.png" alt="Lista de inscritos em cards com a situação de cada plano"><br><sub><b>Inscritos</b>: situação e validade de cada aluno</sub></td>
+    <td width="33%" align="center"><img src="docs/assets/ficha.png" alt="Ficha do aluno com validade, registro de pagamento e envio de aviso"><br><sub><b>Ficha do aluno</b>: pagamento e avisos</sub></td>
+    <td width="33%" align="center"><img src="docs/assets/email.png" alt="E-mail de aviso de mensalidade em atraso recebido pelo aluno"><br><sub><b>E-mail</b> que o aluno recebe</sub></td>
+  </tr>
+</table>
+
+Feito em **Python + Flask**. No computador usa **SQLite** (não precisa instalar banco de dados); na nuvem
+(Vercel) usa **Postgres**. Roda em Windows, Mac ou Linux com Python 3.10 ou mais novo.
 
 ## Funcionalidades
 
@@ -28,17 +57,18 @@ dias definidos em `DIAS_AVISO` (padrão `-3,0,3,10`):
 - **3 dias antes**: lembrete
 - **No dia do vencimento**
 - **3 e 10 dias depois**: aviso de atraso
-- Depois disso, **um novo lembrete a cada 7 dias** até o aluno pagar ou ter a matrícula cancelada
+- Depois disso, **um lembrete por semana**, no máximo `MAX_LEMBRETES_SEMANAIS` (padrão 4) vezes
 
 Cada aviso é enviado **uma única vez** por vencimento, mesmo que a rotina rode várias vezes.
 Quando o pagamento é registrado, a validade é renovada e os avisos param.
 
-## Instalação
+## Instalação no computador
 
 Precisa do Python 3.10 ou mais novo.
 
 ```bash
-cd academia
+git clone https://github.com/Corrar/academia-systemfinance.git
+cd academia-systemfinance
 python -m venv .venv
 # Windows: .venv\Scripts\activate    |    Linux/Mac: source .venv/bin/activate
 pip install -r requirements.txt
@@ -53,6 +83,35 @@ python app.py
 Acesse **http://localhost:5000**. Usuário e senha padrão: `admin` / `admin123` (troque no `.env`).
 
 > Para começar do zero depois de testar, apague o arquivo `academia.db`.
+
+## Publicar na Vercel
+
+O projeto já vem pronto para a Vercel (`vercel.json`). Lá o disco não é permanente, então os dados ficam num
+**Postgres (Neon)**, e a cobrança diária roda pelo **Cron da Vercel** em vez do agendador interno.
+
+1. Em [vercel.com/new](https://vercel.com/new), clique em **Import** no repositório `academia-systemfinance`.
+   A Vercel reconhece o Flask sozinha; não mude as opções de build.
+2. Antes de clicar em **Deploy**, abra **Environment Variables** e crie:
+
+   | Variável | Valor |
+   |---|---|
+   | `ADMIN_USUARIO` | usuário do painel (ex.: `admin`) |
+   | `ADMIN_SENHA` | uma senha forte |
+   | `SECRET_KEY` | uma sequência aleatória longa (ex.: gere com `python -c "import secrets; print(secrets.token_hex(32))"`) |
+   | `CRON_SECRET` | outra sequência aleatória: protege a rota da cobrança diária |
+   | `ACADEMIA_NOME` | nome da academia (dá para mudar depois na tela) |
+
+3. Clique em **Deploy**. Depois, no projeto, abra **Storage → Create Database → Neon (Postgres)** e
+   conecte ao projeto. A Vercel cria a variável `DATABASE_URL` sozinha.
+4. Em **Deployments**, clique nos três pontos do último deploy → **Redeploy**, para ele já subir com o banco.
+5. Abra o endereço do projeto, entre com o usuário e a senha e preencha **Configurações** (dados legais, e-mail e WhatsApp).
+
+**Cobrança diária:** o `vercel.json` agenda `/api/cron/cobranca` todos os dias às 12:00 UTC (**9h de Brasília**).
+No plano gratuito (Hobby) a Vercel pode executar em qualquer minuto dentro dessa hora. A rota só responde a
+chamadas com o `CRON_SECRET`, que a própria Vercel envia. O botão **Executar cobrança agora** (tela Avisos)
+continua funcionando.
+
+> Sem `DATABASE_URL`, o sistema usaria SQLite num disco temporário e **perderia os dados**. Não pule o passo 3.
 
 ## Configurando o envio
 
@@ -75,7 +134,7 @@ texto simples. Use **Ver modelo do e-mail** para conferir antes.
 
 > Também dá para configurar pelo `.env` (`SMTP_HOST`, `SMTP_PORTA`, `SMTP_USUARIO`, `SMTP_SENHA`,
 > `SMTP_SEGURANCA`). O que for salvo na tela de Configurações tem prioridade.
-> A senha fica guardada no arquivo `academia.db`: mantenha esse arquivo protegido.
+> A senha fica guardada no banco (`academia.db` ou Postgres): mantenha o acesso a ele protegido.
 
 ### WhatsApp
 
@@ -103,9 +162,9 @@ WhatsApp Web/celular com a mensagem já escrita. É só apertar enviar.
 
 Os telefones podem ser cadastrados como `(11) 99999-0000`. O sistema coloca o `55` automaticamente.
 
-## Deixando rodando
+## Deixando rodando no computador ou servidor próprio
 
-A cobrança automática roda **enquanto o sistema estiver aberto** (`python app.py`). Para deixar
+Fora da Vercel, a cobrança automática roda **enquanto o sistema estiver aberto** (`python app.py`). Para deixar
 sempre ligado, use um computador da recepção que fique ligado, ou um servidor/VPS.
 
 Se preferir agendar pelo sistema operacional (cron no Linux ou Agendador de Tarefas no Windows),
@@ -122,17 +181,19 @@ Para produção, rode com um servidor WSGI, por exemplo: `pip install waitress` 
 ## Estrutura
 
 ```
-academia/
+academia-systemfinance/
 ├── app.py            # rotas e telas (Flask)
-├── db.py             # banco SQLite, consultas e indicadores
+├── db.py             # banco (SQLite ou Postgres), consultas e indicadores
 ├── notificacoes.py   # mensagens, envio por e-mail e WhatsApp
 ├── ajustes.py        # configurações editáveis pela tela (sobrepõem o .env)
 ├── icones.py         # ícones SVG das telas
 ├── cobranca.py       # rotina diária de cobrança automática
 ├── config.py         # leitura do .env
-├── seed.py           # dados de exemplo
+├── seed.py           # dados de exemplo (fictícios)
+├── vercel.json       # Cron diário da cobrança na Vercel
 ├── templates/        # páginas HTML (+ email_aviso.html; legal/ = documentos públicos)
 ├── docs/CONFORMIDADE.md  # revisão LGPD, acessibilidade e segurança
+├── docs/assets/      # banner e capturas usados neste README
 ├── LICENCAS_TERCEIROS.md # licenças de ícones e fonte
 └── static/style.css
 ```

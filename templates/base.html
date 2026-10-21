@@ -32,6 +32,9 @@
   </div>
 </header>
 
+{% if BANCO_TEMPORARIO %}
+<div class="alerta-sistema perigo" role="alert">{{ icone('alert', 16) }} Banco de dados temporário: os dados serão apagados. Conecte um Postgres (Neon) em Storage na Vercel e faça o redeploy.</div>
+{% endif %}
 {% if SENHA_PADRAO %}
 <div class="alerta-sistema" role="alert">{{ icone('lock', 16) }} A senha de acesso ainda é a padrão (admin123). Defina <code>ADMIN_SENHA</code> no arquivo .env antes de usar com dados reais.</div>
 {% elif empresa.faltando and ep != 'configuracoes' %}

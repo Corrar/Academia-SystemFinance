@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="190" viewBox="0 0 600 190" role="img" aria-labelledby="titulo descricao">
+  <title id="titulo">Academia</title>
+  <desc id="descricao">Cobrança automática de mensalidades para academias</desc>
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2230"/>
+      <stop offset="1" stop-color="#121722"/>
+    </linearGradient>
+    <linearGradient id="logo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b8cff"/>
+      <stop offset="1" stop-color="#2457e6"/>
+    </linearGradient>
+    <filter id="sombra" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#2457e6" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="598" height="188" rx="22" fill="url(#fundo)" stroke="#2c3547"/>
+
+  <!-- logo: quadrado com gradiente e halter (ícone Lucide "dumbbell", licença ISC) -->
+  <g filter="url(#sombra)">
+    <rect x="40" y="43" width="104" height="104" rx="24" fill="url(#logo)"/>
+  </g>
+  <g transform="translate(56 59) scale(3)" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14.4 14.4 9.6 9.6"/>
+    <path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/>
+    <path d="m21.5 21.5-1.4-1.4"/>
+    <path d="M3.9 3.9 2.5 2.5"/>
+    <path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>
+  </g>
+  <!-- ponto amarelo: identidade do painel -->
+  <circle cx="137" cy="51" r="11" fill="#facc15" stroke="#121722" stroke-width="4"/>
+
+  <text x="172" y="104" fill="#f8fafc" font-family="'Plus Jakarta Sans','Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+        font-size="50" font-weight="800" letter-spacing="3">ACADEMIA</text>
+  <text x="172" y="136" fill="#9aa7bb" font-family="'Plus Jakarta Sans','Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+        font-size="18" font-weight="500">cobrança automática de mensalidades</text>
+
+  <!-- faixas: em dia · vence em breve · inadimplente (cores dos cards do painel) -->
+  <rect x="172" y="152" width="58" height="5" rx="2.5" fill="#22c55e"/>
+  <rect x="238" y="152" width="58" height="5" rx="2.5" fill="#3b82f6"/>
+  <rect x="304" y="152" width="58" height="5" rx="2.5" fill="#ef4444"/>
+</svg>

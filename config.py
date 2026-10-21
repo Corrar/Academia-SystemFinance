@@ -1,5 +1,6 @@
 """Configurações lidas do arquivo .env (ou variáveis de ambiente)."""
 import os
+import time
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -31,7 +32,24 @@ def _int(chave: str, padrao: int) -> int:
         return padrao
 
 
+# Fuso horário da academia: datas de vencimento e horário da cobrança seguem este fuso
+# (servidores na nuvem, como a Vercel, rodam em UTC)
+FUSO = _env("FUSO", "America/Sao_Paulo")
+os.environ["TZ"] = FUSO
+if hasattr(time, "tzset"):
+    time.tzset()
+
+# Na Vercel (ou outro serviço sem disco permanente) use Postgres: DATABASE_URL=postgresql://...
+DATABASE_URL = _env("DATABASE_URL") or _env("POSTGRES_URL")
 DB_PATH = _env("DB_PATH", str(BASE_DIR / "academia.db"))
+# Rodando na Vercel: sem disco permanente nem processo contínuo (cobrança via Cron)
+NA_VERCEL = bool(_env("VERCEL"))
+# Na Vercel sem Postgres, o SQLite só pode ficar em /tmp, que é apagado: o painel mostra um alerta
+BANCO_TEMPORARIO = NA_VERCEL and not DATABASE_URL
+if BANCO_TEMPORARIO:
+    DB_PATH = "/tmp/academia.db"
+# Segredo que a Vercel envia no cabeçalho Authorization ao chamar o Cron
+CRON_SECRET = _env("CRON_SECRET")
 
 ACADEMIA_NOME = _env("ACADEMIA_NOME", "Minha Academia")
 ACADEMIA_TELEFONE = _env("ACADEMIA_TELEFONE")
@@ -48,19 +66,19 @@ def _chave_secreta() -> str:
     if chave and chave not in ("dev-inseguro-troque", "troque-por-uma-chave-longa-e-aleatoria"):
         return chave
     arquivo = BASE_DIR / ".secret_key"
-    if not arquivo.exists():
-        import secrets
-        arquivo.write_text(secrets.token_hex(32), encoding="utf-8")
-        try:
+    try:
+        if not arquivo.exists():
+            import secrets
+            arquivo.write_text(secrets.token_hex(32), encoding="utf-8")
             arquivo.chmod(0o600)
-        except OSError:
-            pass
-    return arquivo.read_text(encoding="utf-8").strip()
+        return arquivo.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""  # disco somente leitura (ex.: Vercel): a chave fica guardada no banco
 
 
 SECRET_KEY = _chave_secreta()
 # Defina COOKIE_SEGURO=1 quando o sistema estiver publicado com HTTPS
-COOKIE_SEGURO = _env("COOKIE_SEGURO") == "1"
+COOKIE_SEGURO = _env("COOKIE_SEGURO", "1" if _env("VERCEL") else "0") == "1"
 
 DIAS_INADIMPLENCIA = _int("DIAS_INADIMPLENCIA", 10)
 DIAS_AVISO = sorted({int(d) for d in _env("DIAS_AVISO", "-3,0,3,10").split(",") if d.strip().lstrip("-").isdigit()})
