@@ -15,10 +15,40 @@
   <section class="card">
     <div class="card-titulo"><span class="ico p g-indigo">{{ icone('building', 17) }}</span><div><h2>Academia</h2><p class="sub">aparece nos e-mails e mensagens de WhatsApp</p></div></div>
     <div class="form-grid">
-      <div class="campo"><label>Nome da academia</label><input name="academia_nome" value="{{ v.academia_nome }}" required></div>
-      <div class="campo"><label>Telefone para dúvidas</label><input name="academia_telefone" value="{{ v.academia_telefone }}" placeholder="(11) 99999-0000"></div>
-      <div class="campo"><label>Chave PIX</label><input name="chave_pix" value="{{ v.chave_pix }}" placeholder="CNPJ, e-mail, telefone ou chave aleatória"></div>
+      <label class="campo"><span class="rotulo-campo">Nome da academia</span><input name="academia_nome" value="{{ v.academia_nome }}" required></label>
+      <label class="campo"><span class="rotulo-campo">Telefone para dúvidas</span><input name="academia_telefone" value="{{ v.academia_telefone }}" placeholder="(11) 99999-0000"></label>
+      <label class="campo"><span class="rotulo-campo">Chave PIX</span><input name="chave_pix" value="{{ v.chave_pix }}" placeholder="CNPJ, e-mail, telefone ou chave aleatória"></label>
     </div>
+  </section>
+
+  <section class="card" id="empresa">
+    <div class="card-titulo">
+      <span class="ico p g-violeta">{{ icone('receipt', 17) }}</span>
+      <div><h2>Dados legais e documentos</h2>
+        <p class="sub">aparecem no rodapé, nos e-mails e na política de privacidade, nos termos e na política de reembolso
+        {% if empresa.faltando %}<span class="pill amarelo">{{ icone('alert', 11) }} {{ empresa.faltando|length }} dado(s) faltando</span>{% else %}<span class="pill verde">{{ icone('check', 11) }} Completo</span>{% endif %}</p></div>
+    </div>
+    <div class="form-grid">
+      <label class="campo"><span class="rotulo-campo">Razão social</span><input name="razao_social" value="{{ v.razao_social }}" placeholder="Academia Exemplo Ltda." autocomplete="organization"></label>
+      <label class="campo"><span class="rotulo-campo">CNPJ</span><input name="cnpj" value="{{ v.cnpj }}" placeholder="00.000.000/0001-00"></label>
+      <label class="campo"><span class="rotulo-campo">E-mail de contato</span><input type="email" name="email_contato" value="{{ v.email_contato }}" placeholder="contato@suaacademia.com.br"></label>
+      <label class="campo largo"><span class="rotulo-campo">Endereço completo</span><input name="endereco" value="{{ v.endereco }}" placeholder="Rua, número, bairro, cidade/UF, CEP" autocomplete="street-address"></label>
+      <label class="campo"><span class="rotulo-campo">Encarregado de dados (DPO) <span class="ajuda">· pessoa que atende pedidos LGPD</span></span><input name="encarregado_nome" value="{{ v.encarregado_nome }}" placeholder="Nome do responsável"></label>
+      <label class="campo"><span class="rotulo-campo">E-mail do encarregado</span><input type="email" name="encarregado_email" value="{{ v.encarregado_email }}" placeholder="privacidade@suaacademia.com.br"></label>
+      <label class="campo"><span class="rotulo-campo">Endereço público do sistema <span class="ajuda">· para os links nos e-mails</span></span><input type="url" name="url_publica" value="{{ v.url_publica }}" placeholder="https://painel.suaacademia.com.br"></label>
+      <label class="campo"><span class="rotulo-campo">Cidade do foro <span class="ajuda">· opcional</span></span><input name="cidade_foro" value="{{ v.cidade_foro }}" placeholder="São Paulo/SP"></label>
+      <label class="campo"><span class="rotulo-campo">Multa no cancelamento de planos longos (%) <span class="ajuda">· 0 = sem multa</span></span><input name="retencao_cancelamento_pct" value="{{ v.retencao_cancelamento_pct }}" inputmode="decimal" placeholder="0"></label>
+      <label class="campo"><span class="rotulo-campo">Prazo para reembolso (dias)</span><input name="prazo_reembolso_dias" value="{{ v.prazo_reembolso_dias }}" inputmode="numeric" placeholder="30"></label>
+    </div>
+    <div class="linha-botoes">
+      <a class="btn sm" href="{{ url_for('privacidade') }}" target="_blank">{{ icone('lock', 14) }} Política de privacidade</a>
+      <a class="btn sm" href="{{ url_for('termos') }}" target="_blank">{{ icone('receipt', 14) }} Termos de uso</a>
+      <a class="btn sm" href="{{ url_for('reembolso') }}" target="_blank">{{ icone('wallet', 14) }} Cancelamento e reembolso</a>
+    </div>
+    <div class="info" style="margin-top:14px">{{ icone('alert', 16) }}<div>
+      Os documentos são <strong>modelos</strong> montados com as regras reais do sistema (dados coletados, avisos, prazos).
+      Antes de divulgar, peça a um advogado que revise, principalmente multa, reembolso e foro.
+    </div></div>
   </section>
 
   <section class="card">
@@ -27,7 +57,7 @@
       <div><h2>Envio por e-mail (SMTP)</h2><p class="sub">{% if v.smtp_host %}<span class="pill verde">{{ icone('check', 11) }} Configurado</span>{% else %}<span class="pill">{{ icone('lock', 11) }} Modo simulado</span>{% endif %}</p></div>
     </div>
 
-    <label style="display:block;margin-bottom:8px">Seu provedor</label>
+    <p class="rotulo-campo" style="margin:0 0 8px">Seu provedor</p>
     <div class="presets">
       {% for nome, (host, porta, seg) in presets.items() %}
         <button type="button" class="filtro {{ 'ativo' if v.smtp_host == host }}" data-host="{{ host }}" data-porta="{{ porta }}" data-seg="{{ seg }}">{{ nome }}</button>
@@ -35,20 +65,20 @@
     </div>
 
     <div class="form-grid">
-      <div class="campo"><label>Servidor SMTP</label><input name="smtp_host" id="smtp_host" value="{{ v.smtp_host }}" placeholder="smtp.gmail.com"></div>
-      <div class="campo"><label>Porta</label><input name="smtp_porta" id="smtp_porta" value="{{ v.smtp_porta }}" inputmode="numeric" placeholder="587"></div>
-      <div class="campo"><label>Segurança</label>
+      <label class="campo"><span class="rotulo-campo">Servidor SMTP</span><input name="smtp_host" id="smtp_host" value="{{ v.smtp_host }}" placeholder="smtp.gmail.com"></label>
+      <label class="campo"><span class="rotulo-campo">Porta</span><input name="smtp_porta" id="smtp_porta" value="{{ v.smtp_porta }}" inputmode="numeric" placeholder="587"></label>
+      <label class="campo"><span class="rotulo-campo">Segurança</span>
         <select name="smtp_seguranca" id="smtp_seguranca">
           <option value="tls" {{ 'selected' if v.smtp_seguranca != 'ssl' }}>TLS / STARTTLS (porta 587)</option>
           <option value="ssl" {{ 'selected' if v.smtp_seguranca == 'ssl' }}>SSL (porta 465)</option>
         </select>
-      </div>
-      <div class="campo"><label>Usuário (e-mail de login)</label><input name="smtp_usuario" value="{{ v.smtp_usuario }}" placeholder="financeiro@suaacademia.com.br" autocomplete="off"></div>
-      <div class="campo">
-        <label>Senha {% if 'smtp_senha' in salvos %}<span class="ajuda">· salva (deixe em branco para manter)</span>{% endif %}</label>
+      </label>
+      <label class="campo"><span class="rotulo-campo">Usuário (e-mail de login)</span><input name="smtp_usuario" value="{{ v.smtp_usuario }}" placeholder="financeiro@suaacademia.com.br" autocomplete="off"></label>
+      <label class="campo">
+        <span class="rotulo-campo">Senha {% if 'smtp_senha' in salvos %}<span class="ajuda">· salva (deixe em branco para manter)</span>{% endif %}</span>
         <input name="smtp_senha" type="password" placeholder="{{ '••••••••' if 'smtp_senha' in salvos else 'Senha de app' }}" autocomplete="new-password">
-      </div>
-      <div class="campo"><label>Remetente <span class="ajuda">· opcional</span></label><input name="smtp_remetente" value="{{ v.smtp_remetente }}" placeholder="igual ao usuário"></div>
+      </label>
+      <label class="campo"><span class="rotulo-campo">Remetente <span class="ajuda">· opcional</span></span><input name="smtp_remetente" value="{{ v.smtp_remetente }}" placeholder="igual ao usuário"></label>
     </div>
 
     <div class="info" style="margin-top:16px">{{ icone('lock', 16) }}<div>
@@ -60,14 +90,14 @@
 
 {% macro campo(nome, rotulo, ph='', ajuda='') %}
   {% set secreto = nome in salvos or nome in ['zapi_token', 'zapi_client_token', 'evolution_apikey', 'meta_token', 'twilio_token'] %}
-  <div class="campo">
-    <label>{{ rotulo }}{% if nome in salvos %} <span class="ajuda">· salvo (em branco mantém)</span>{% elif ajuda %} <span class="ajuda">· {{ ajuda }}</span>{% endif %}</label>
+  <label class="campo">
+    <span class="rotulo-campo">{{ rotulo }}{% if nome in salvos %} <span class="ajuda">· salvo (em branco mantém)</span>{% elif ajuda %} <span class="ajuda">· {{ ajuda }}</span>{% endif %}</span>
     {% if secreto %}
       <input name="{{ nome }}" type="password" placeholder="{{ '••••••••' if nome in salvos else ph }}" autocomplete="new-password">
     {% else %}
       <input name="{{ nome }}" value="{{ v[nome] }}" placeholder="{{ ph }}" autocomplete="off">
     {% endif %}
-  </div>
+  </label>
 {% endmacro %}
 
   <section class="card" id="whatsapp">
@@ -76,8 +106,8 @@
       <div><h2>Envio por WhatsApp</h2><p class="sub">{% if v.wa_provedor != 'simulado' %}<span class="pill verde">{{ icone('check', 11) }} Ativo</span>{% else %}<span class="pill">{{ icone('lock', 11) }} Modo simulado</span>{% endif %}</p></div>
     </div>
 
-    <label style="display:block;margin-bottom:8px">Selecione o provedor</label>
-    <div class="opcoes">
+    <p class="rotulo-campo" id="rotulo-provedor" style="margin:0 0 8px">Selecione o provedor</p>
+    <div class="opcoes" role="radiogroup" aria-labelledby="rotulo-provedor">
       {% for chave, desc, ic, cor in provedores %}
       <label class="opcao">
         <input type="radio" name="wa_provedor" value="{{ chave }}" {{ 'checked' if v.wa_provedor == chave }}>
@@ -112,7 +142,7 @@
         {{ campo('evolution_apikey', 'API key', 'apikey') }}
       </div>
       <div class="info" style="margin-top:14px">{{ icone('alert', 16) }}<div>
-        A <a href="https://doc.evolution-api.com" target="_blank" rel="noopener">Evolution API</a> é gratuita e roda no seu servidor.
+        A <a href="https://doc.evolution-api.com" target="_blank" rel="noopener">Evolution API</a> é um software gratuito (open-source): você paga apenas o servidor onde ela roda.
         Crie uma instância, conecte o WhatsApp pelo QR Code e use a <strong>API key</strong> definida em <code>AUTHENTICATION_API_KEY</code> (ou a chave da instância).
       </div></div>
     </div>
@@ -152,7 +182,7 @@
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <div class="card-titulo"><span class="ico p g-verde">{{ icone('send', 17) }}</span><div><h2>Enviar e-mail de teste</h2><p class="sub">salve as configurações antes de testar</p></div></div>
   <div class="barra-busca" style="margin:0">
-    <label class="busca" style="max-width:380px">{{ icone('mail', 16) }}<input type="email" name="destino" placeholder="seu@email.com" value="{{ v.smtp_usuario }}" required></label>
+    <label class="busca" style="max-width:380px">{{ icone('mail', 16) }}<input type="email" name="destino" aria-label="E-mail para o teste" placeholder="seu@email.com" value="{{ v.smtp_usuario }}" required></label>
     <button class="btn primario">{{ icone('send', 15) }} Enviar teste</button>
   </div>
 </form>
@@ -161,7 +191,7 @@
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <div class="card-titulo"><span class="ico p g-verde">{{ icone('whatsapp', 17) }}</span><div><h2>Enviar WhatsApp de teste</h2><p class="sub">salve as configurações antes de testar</p></div></div>
   <div class="barra-busca" style="margin:0">
-    <label class="busca" style="max-width:380px">{{ icone('phone', 16) }}<input name="numero" placeholder="(11) 99999-0000" value="{{ v.academia_telefone }}" inputmode="tel" required></label>
+    <label class="busca" style="max-width:380px">{{ icone('phone', 16) }}<input name="numero" aria-label="Número de WhatsApp para o teste" placeholder="(11) 99999-0000" value="{{ v.academia_telefone }}" inputmode="tel" required></label>
     <button class="btn primario">{{ icone('send', 15) }} Enviar teste</button>
   </div>
 </form>

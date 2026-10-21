@@ -12,22 +12,21 @@
 <form method="post">
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <section class="card">
-    <div class="card-titulo"><span class="ico p g-azul">{{ icone('user', 17) }}</span><div><h2>Dados pessoais</h2><p class="sub">e-mail e WhatsApp são usados nos avisos</p></div></div>
+    <div class="card-titulo"><span class="ico p g-azul">{{ icone('user', 17) }}</span><div><h2>Dados do aluno</h2><p class="sub">só o necessário para matrícula e cobrança</p></div></div>
     <div class="form-grid">
-      <div class="campo largo"><label>Nome completo *</label><input name="nome" value="{{ aluno.nome or '' }}" required></div>
-      <div class="campo"><label>CPF</label><input name="cpf" value="{{ aluno.cpf or '' }}" placeholder="000.000.000-00"></div>
-      <div class="campo"><label>Data de nascimento</label><input type="date" name="data_nascimento" value="{{ aluno.data_nascimento or '' }}"></div>
-      <div class="campo"><label>WhatsApp</label><input name="telefone" value="{{ aluno.telefone or '' }}" placeholder="(11) 99999-0000" inputmode="tel"></div>
-      <div class="campo"><label>E-mail</label><input type="email" name="email" value="{{ aluno.email or '' }}" placeholder="aluno@email.com"></div>
-      <div class="campo largo"><label>Observações</label><textarea name="observacoes" rows="2">{{ aluno.observacoes or '' }}</textarea></div>
+      <label class="campo largo"><span class="rotulo-campo">Nome completo *</span><input name="nome" value="{{ aluno.nome or '' }}" required autocomplete="off"></label>
+      <label class="campo"><span class="rotulo-campo">WhatsApp</span><input name="telefone" value="{{ aluno.telefone or '' }}" placeholder="(11) 99999-0000" inputmode="tel" autocomplete="off"></label>
+      <label class="campo"><span class="rotulo-campo">E-mail</span><input type="email" name="email" value="{{ aluno.email or '' }}" placeholder="aluno@email.com" autocomplete="off"></label>
+      <label class="campo"><span class="rotulo-campo">CPF <span class="ajuda">· opcional, só se precisar emitir recibo ou nota</span></span><input name="cpf" value="{{ aluno.cpf or '' }}" placeholder="000.000.000-00" autocomplete="off"></label>
+      <label class="campo largo"><span class="rotulo-campo">Observações <span class="ajuda">· não registre dados de saúde (dado sensível pela LGPD)</span></span><textarea name="observacoes" rows="2">{{ aluno.observacoes or '' }}</textarea></label>
     </div>
   </section>
 
   <section class="card">
     <div class="card-titulo"><span class="ico p g-violeta">{{ icone('tag', 17) }}</span><div><h2>Plano e validade</h2><p class="sub">a validade é sugerida pela duração do plano</p></div></div>
     <div class="form-grid">
-      <div class="campo">
-        <label>Plano</label>
+      <label class="campo">
+        <span class="rotulo-campo">Plano</span>
         <select name="plano_id" id="plano">
           {% for p in planos %}
             <option value="{{ p.id }}" data-dias="{{ p.duracao_dias }}" {{ 'selected' if aluno.plano_id == p.id }}>
@@ -35,14 +34,14 @@
             </option>
           {% endfor %}
         </select>
-      </div>
-      <div class="campo"><label>Data de inscrição</label><input type="date" name="data_inscricao" id="inscricao" value="{{ aluno.data_inscricao or '' }}"></div>
-      <div class="campo"><label>Validade (vencimento) *</label><input type="date" name="data_vencimento" id="vencimento" value="{{ aluno.data_vencimento or '' }}" required></div>
+      </label>
+      <label class="campo"><span class="rotulo-campo">Data de inscrição</span><input type="date" name="data_inscricao" id="inscricao" value="{{ aluno.data_inscricao or '' }}"></label>
+      <label class="campo"><span class="rotulo-campo">Validade (vencimento) *</span><input type="date" name="data_vencimento" id="vencimento" value="{{ aluno.data_vencimento or '' }}" required></label>
       {% if novo %}
-      <div class="campo">
-        <label>Forma de pagamento</label>
+      <label class="campo">
+        <span class="rotulo-campo">Forma de pagamento</span>
         <select name="forma">{% for f in formas %}<option>{{ f }}</option>{% endfor %}</select>
-      </div>
+      </label>
       <div class="campo largo">
         <label class="check"><input type="checkbox" name="pago_agora" value="1" checked> Primeira mensalidade paga no ato da inscrição</label>
       </div>
@@ -50,8 +49,29 @@
     </div>
   </section>
 
+  <section class="card">
+    <div class="card-titulo"><span class="ico p g-verde">{{ icone('lock', 17) }}</span><div><h2>Avisos e privacidade</h2><p class="sub">o aluno pode mudar de ideia a qualquer momento</p></div></div>
+    <fieldset style="border:0;padding:0;margin:0">
+      <legend class="rotulo-campo" style="margin-bottom:10px">Avisos de vencimento autorizados</legend>
+      <div class="linha-botoes" style="margin-top:0;gap:22px">
+        <label class="check"><input type="checkbox" name="aceita_email" value="1" {{ 'checked' if aluno.aceita_email }}> Por e-mail</label>
+        <label class="check"><input type="checkbox" name="aceita_whatsapp" value="1" {{ 'checked' if aluno.aceita_whatsapp }}> Por WhatsApp</label>
+      </div>
+    </fieldset>
+    <hr class="divisor">
+    {% if aluno.termos_aceitos_em %}
+      <p class="sub">{{ icone('check', 14) }} Termos de uso e política de privacidade apresentados e aceitos em
+        <b>{{ aluno.termos_aceitos_em[:10]|data_br }} às {{ aluno.termos_aceitos_em[11:16] }}</b>.</p>
+    {% else %}
+      <label class="check"><input type="checkbox" name="termos_aceitos" value="1">
+        <span>O aluno (ou responsável, se menor de 18 anos) recebeu e aceitou os
+        <a href="{{ url_for('termos') }}" target="_blank">termos de uso</a> e a
+        <a href="{{ url_for('privacidade') }}" target="_blank">política de privacidade</a></span></label>
+    {% endif %}
+  </section>
+
   <div class="linha-botoes">
-    <button class="btn primario">{{ icone('check', 15) }} Salvar</button>
+    <button type="submit" class="btn primario">{{ icone('check', 15) }} Salvar</button>
     <a class="btn" href="{{ url_for('aluno_detalhe', aluno_id=aluno.id) if not novo else url_for('alunos') }}">Cancelar</a>
   </div>
 </form>

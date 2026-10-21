@@ -1,0 +1,84 @@
+{% extends "legal/_base.html" %}
+{% from "legal/_macros.html" import campo %}
+{% block titulo %}Política de privacidade{% endblock %}
+{% block titulo_pagina %}Política de privacidade{% endblock %}
+{% block documento %}
+<p>Esta política explica como a {{ e.academia_nome }} trata os dados pessoais de alunos e alunas, de acordo com a
+Lei Geral de Proteção de Dados (Lei nº 13.709/2018, “LGPD”). A academia é a <strong>controladora</strong> dos dados.</p>
+
+<h2>1. Quais dados coletamos</h2>
+<p>Coletamos somente o necessário para gerir a matrícula e a cobrança das mensalidades:</p>
+<ul>
+  <li><strong>Identificação:</strong> nome completo e, quando necessário para emitir recibo ou nota fiscal, CPF;</li>
+  <li><strong>Contato:</strong> e-mail e número de WhatsApp, usados para avisos de vencimento;</li>
+  <li><strong>Plano e pagamentos:</strong> plano contratado, data de inscrição, validade, valores pagos, datas e formas de pagamento;</li>
+  <li><strong>Histórico de avisos:</strong> registro dos avisos de vencimento enviados (canal, data e status).</li>
+</ul>
+<p>Não coletamos dados de saúde nem outros dados pessoais sensíveis por meio deste sistema. Não usamos os seus dados
+para publicidade nem os vendemos.</p>
+
+<h2>2. Para que usamos e com qual base legal</h2>
+<ul>
+  <li><strong>Gerir a matrícula e cobrar as mensalidades</strong>, incluindo avisos de vencimento e de atraso:
+    execução do contrato (art. 7º, V, da LGPD);</li>
+  <li><strong>Guardar os registros de pagamento</strong> exigidos pela legislação fiscal e contábil:
+    cumprimento de obrigação legal (art. 7º, II);</li>
+  <li><strong>Defender a academia</strong> em eventual cobrança ou processo: exercício regular de direitos (art. 7º, VI).</li>
+</ul>
+<p>Os avisos de vencimento são mensagens de serviço, enviadas em horário comercial. Sempre que você pedir, deixamos de
+enviá-los por e-mail e/ou WhatsApp. Basta responder a mensagem ou falar com a recepção.</p>
+
+<h2>3. Com quem compartilhamos</h2>
+<p>Só com prestadores que nos ajudam a enviar os avisos e que tratam os dados conforme as nossas instruções (operadores):</p>
+<ul>
+  <li>o provedor de e-mail usado pela academia;</li>
+  <li>o provedor de envio de mensagens de WhatsApp usado pela academia e o próprio WhatsApp (Meta).</li>
+</ul>
+<p>Alguns desses prestadores podem armazenar dados fora do Brasil. Nesses casos, a transferência segue o art. 33 da LGPD.
+Também podemos compartilhar dados quando exigido por lei ou por ordem de autoridade competente.</p>
+
+<h2>4. Por quanto tempo guardamos</h2>
+<ul>
+  <li>Dados cadastrais: enquanto a matrícula estiver ativa e, depois, pelo tempo necessário para encerrar pendências;</li>
+  <li>Registros de pagamento: pelo prazo exigido pela legislação fiscal (em geral, 5 anos);</li>
+  <li>Histórico de avisos: apagado automaticamente após {{ retencao_avisos }} dias.</li>
+</ul>
+<p>Encerrado o prazo, os dados são excluídos ou anonimizados. Nesse caso, guardamos apenas os valores pagos, sem identificar você.</p>
+
+<h2>5. Seus direitos</h2>
+<p>Você pode, a qualquer momento e sem custo (art. 18 da LGPD):</p>
+<ul>
+  <li>confirmar se tratamos seus dados e ter acesso a eles, inclusive em arquivo para portabilidade;</li>
+  <li>corrigir dados incompletos, inexatos ou desatualizados;</li>
+  <li>pedir a anonimização ou exclusão de dados desnecessários, ou de todos eles ao encerrar a matrícula,
+    respeitados os registros que a lei nos obriga a manter;</li>
+  <li>saber com quem compartilhamos seus dados;</li>
+  <li>se opor ao envio de avisos por e-mail ou WhatsApp;</li>
+  <li>apresentar reclamação à Autoridade Nacional de Proteção de Dados (ANPD), em <a href="https://www.gov.br/anpd" rel="noopener">gov.br/anpd</a>.</li>
+</ul>
+<p>Respondemos aos pedidos em até 15 dias.</p>
+
+<h2>6. Encarregado de dados (DPO)</h2>
+<div class="card">
+  <p>Para exercer seus direitos ou tirar dúvidas sobre esta política, fale com o nosso encarregado:<br>
+  <strong>{{ campo(e.encarregado_nome, 'nome do encarregado') }}</strong> ·
+  {% if e.encarregado_email %}<a href="mailto:{{ e.encarregado_email }}">{{ e.encarregado_email }}</a>{% else %}{{ campo('', 'e-mail do encarregado') }}{% endif %}</p>
+</div>
+
+<h2>7. Menores de idade</h2>
+<p>A matrícula de menores de 18 anos é feita pelo pai, mãe ou responsável legal, que fornece os dados e recebe os avisos
+de cobrança. Os dados de crianças e adolescentes são tratados no seu melhor interesse (art. 14 da LGPD).</p>
+
+<h2>8. Cookies</h2>
+<p>As páginas públicas (como esta) não usam cookies. O painel interno, de acesso restrito à equipe da academia, usa um
+único cookie essencial de sessão para manter o login e proteger os formulários. Esse cookie é estritamente necessário e
+não serve para rastreamento. Não usamos Google Analytics, pixels de anúncio nem qualquer outra ferramenta de rastreamento.</p>
+
+<h2>9. Segurança</h2>
+<p>O acesso ao sistema é protegido por senha e limitado à equipe autorizada. Senhas e chaves de integração não são exibidas
+nas telas, e tentativas repetidas de acesso indevido são bloqueadas. Se ocorrer um incidente de segurança que possa gerar
+risco ou dano relevante, avisaremos você e a ANPD, conforme o art. 48 da LGPD.</p>
+
+<h2>10. Alterações</h2>
+<p>Podemos atualizar esta política. A data da última atualização fica no topo da página. Mudanças relevantes serão comunicadas aos alunos.</p>
+{% endblock %}

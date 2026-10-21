@@ -3,36 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
   <title>{% block titulo %}Painel{% endblock %} · {{ academia }}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
 {% set ep = request.endpoint or '' %}
 <header class="topbar">
-  <a class="logo" href="{{ url_for('dashboard') }}"><span class="logo-mark"></span><span class="nome">{{ academia }}</span></a>
-  <nav class="tabs">
-    <a href="{{ url_for('dashboard') }}" class="{{ 'ativo' if ep == 'dashboard' }}">{{ icone('layout', 16) }} Dashboard</a>
-    <a href="{{ url_for('alunos') }}" class="{{ 'ativo' if ep.startswith('aluno') }}">{{ icone('users', 16) }} Inscritos</a>
-    <a href="{{ url_for('validade') }}" class="{{ 'ativo' if ep == 'validade' }}">{{ icone('calendar', 16) }} Validade</a>
-    <a href="{{ url_for('financeiro') }}" class="{{ 'ativo' if ep == 'financeiro' }}">{{ icone('wallet', 16) }} Financeiro</a>
-    <a href="{{ url_for('avisos') }}" class="{{ 'ativo' if ep == 'avisos' }}">{{ icone('bell', 16) }} Avisos</a>
-    <a href="{{ url_for('planos') }}" class="{{ 'ativo' if ep == 'planos' }}">{{ icone('tag', 16) }} Planos</a>
-    <a href="{{ url_for('configuracoes') }}" class="{{ 'ativo' if ep == 'configuracoes' }}">{{ icone('settings', 16) }} Configurações</a>
+  <a class="logo" href="{{ url_for('dashboard') }}"><span class="logo-mark" aria-hidden="true"></span><span class="nome">{{ academia }}</span></a>
+  <nav class="tabs" aria-label="Menu principal">
+    {% for destino, ic, rotulo, ativo in [
+      ('dashboard', 'layout', 'Dashboard', ep == 'dashboard'),
+      ('alunos', 'users', 'Inscritos', ep.startswith('aluno')),
+      ('validade', 'calendar', 'Validade', ep == 'validade'),
+      ('financeiro', 'wallet', 'Financeiro', ep == 'financeiro'),
+      ('avisos', 'bell', 'Avisos', ep == 'avisos'),
+      ('planos', 'tag', 'Planos', ep == 'planos'),
+      ('configuracoes', 'settings', 'Configurações', ep == 'configuracoes'),
+    ] %}
+      <a href="{{ url_for(destino) }}" class="{{ 'ativo' if ativo }}" {{ 'aria-current="page"'|safe if ativo }}>{{ icone(ic, 16) }} {{ rotulo }}</a>
+    {% endfor %}
   </nav>
   <div class="usuario">
     <div><strong>{{ usuario }}</strong><small>Administrador · Geral</small></div>
-    <span class="avatar">{{ usuario[:1] }}</span>
-    <a class="sair" href="{{ url_for('logout') }}" title="Sair">{{ icone('logout', 17) }}</a>
+    <span class="avatar" aria-hidden="true">{{ usuario[:1] }}</span>
+    <a class="sair" href="{{ url_for('logout') }}" title="Sair" aria-label="Sair do sistema">{{ icone('logout', 17) }}</a>
   </div>
 </header>
-<main class="pagina">
+
+{% if SENHA_PADRAO %}
+<div class="alerta-sistema" role="alert">{{ icone('lock', 16) }} A senha de acesso ainda é a padrão (admin123). Defina <code>ADMIN_SENHA</code> no arquivo .env antes de usar com dados reais.</div>
+{% elif empresa.faltando and ep != 'configuracoes' %}
+<div class="alerta-sistema" role="status">{{ icone('alert', 16) }} Faltam dados legais da empresa (razão social, CNPJ, endereço, encarregado de dados). <a href="{{ url_for('configuracoes') }}#empresa">Completar em Configurações</a></div>
+{% endif %}
+
+<main class="pagina" id="conteudo" tabindex="-1">
   {% for cat, msg in get_flashed_messages(with_categories=true) %}
-    <div class="flash {{ cat }}">{{ icone('check' if cat == 'ok' else 'alert', 17) }} {{ msg }}</div>
+    <div class="flash {{ cat }}" role="{{ 'alert' if cat == 'erro' else 'status' }}">{{ icone('check' if cat == 'ok' else 'alert', 17) }} {{ msg }}</div>
   {% endfor %}
   {% block conteudo %}{% endblock %}
 </main>
+{% include "_rodape.html" %}
 </body>
 </html>

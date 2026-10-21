@@ -1,0 +1,4 @@
+{# Mostra o dado da empresa ou um destaque [a preencher] #}
+{% macro campo(valor, rotulo) -%}
+  {%- if valor -%}{{ valor }}{%- else -%}<span class="pendente">[{{ rotulo }}]</span>{%- endif -%}
+{%- endmacro %}

@@ -1,0 +1,49 @@
+{# Layout público dos documentos legais (sem login) #}
+{% from "legal/_macros.html" import campo %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{% endblock %} · {{ e.academia_nome }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+<header class="topbar">
+  <a class="logo" href="{{ url_for('privacidade') }}"><span class="logo-mark" aria-hidden="true"></span><span class="nome">{{ e.academia_nome }}</span></a>
+  <nav class="tabs" aria-label="Documentos">
+    {% set ep = request.endpoint %}
+    <a href="{{ url_for('privacidade') }}" class="{{ 'ativo' if ep == 'privacidade' }}" {{ 'aria-current="page"'|safe if ep == 'privacidade' }}>{{ icone('lock', 16) }} Privacidade</a>
+    <a href="{{ url_for('termos') }}" class="{{ 'ativo' if ep == 'termos' }}" {{ 'aria-current="page"'|safe if ep == 'termos' }}>{{ icone('receipt', 16) }} Termos de uso</a>
+    <a href="{{ url_for('reembolso') }}" class="{{ 'ativo' if ep == 'reembolso' }}" {{ 'aria-current="page"'|safe if ep == 'reembolso' }}>{{ icone('wallet', 16) }} Cancelamento e reembolso</a>
+  </nav>
+</header>
+<main class="pagina doc" id="conteudo" tabindex="-1">
+  <div class="hero" style="text-align:left">
+    <p class="saudacao">{{ e.academia_nome }}</p>
+    <h1>{% block titulo_pagina %}{% endblock %}</h1>
+    <p class="sub">Última atualização: {{ atualizado|data_br if atualizado else '—' }}</p>
+  </div>
+  {% if e.faltando %}
+  <div class="info" style="margin-bottom:18px" role="note">{{ icone('alert', 16) }}<div>Os trechos destacados em amarelo ainda precisam ser preenchidos pela academia em <strong>Configurações → Dados legais</strong>.</div></div>
+  {% endif %}
+  {% block documento %}{% endblock %}
+
+  <h2>Quem somos</h2>
+  <div class="card">
+    <p><strong>{{ campo(e.razao_social, 'razão social') }}</strong> ({{ e.academia_nome }})<br>
+    CNPJ: {{ campo(e.cnpj, 'CNPJ') }}<br>
+    Endereço: {{ campo(e.endereco, 'endereço completo') }}<br>
+    E-mail: {% if e.email_contato %}<a href="mailto:{{ e.email_contato }}">{{ e.email_contato }}</a>{% else %}{{ campo('', 'e-mail de contato') }}{% endif %}
+    {% if e.academia_telefone %} · Telefone: {{ e.academia_telefone }}{% endif %}</p>
+  </div>
+</main>
+<footer class="rodape">
+  <div class="dentro">
+    <div><strong>{{ e.razao_social or e.academia_nome }}</strong>{% if e.cnpj %} · CNPJ {{ e.cnpj }}{% endif %}</div>
+    <div>Esta página não usa cookies nem ferramentas de rastreamento.</div>
+  </div>
+</footer>
+</body>
+</html>

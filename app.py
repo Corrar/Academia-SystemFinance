@@ -1,11 +1,13 @@
 """Sistema de cobrança de mensalidades para academia (Flask + SQLite)."""
+import json
 import os
 import secrets
 import sqlite3
-from datetime import date, timedelta
+import time
+from datetime import date, datetime, timedelta
 from functools import wraps
 
-from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, flash, redirect, render_template, request, session, url_for
 
 import ajustes
 import cobranca
@@ -17,6 +19,12 @@ from notificacoes import data_br, moeda
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=config.COOKIE_SEGURO,
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+)
 app.jinja_env.filters["moeda"] = moeda
 app.jinja_env.filters["data_br"] = data_br
 app.jinja_env.filters["moeda_inteira"] = lambda v: moeda(round(v or 0))[:-3]
@@ -46,6 +54,8 @@ FORMAS_PAGAMENTO = ["PIX", "Dinheiro", "Cartão de débito", "Cartão de crédit
 def contexto_global():
     return {
         "academia": ajustes.obter("academia_nome"),
+        "empresa": ajustes.empresa(),
+        "SENHA_PADRAO": config.SENHA_PADRAO,
         "usuario": config.ADMIN_USUARIO.capitalize(),
         "STATUS_ROTULO": STATUS_ROTULO,
         "TONS": TONS,
@@ -69,20 +79,63 @@ def login_obrigatorio(view):
 
 @app.before_request
 def proteger_csrf():
+    if request.endpoint in PUBLICAS - {"login"}:
+        return  # páginas públicas não criam cookie
     session.setdefault("csrf", secrets.token_hex(16))
     if request.method == "POST" and request.form.get("csrf") != session["csrf"]:
         abort(400, "Token de segurança inválido. Recarregue a página.")
 
 
+# Páginas abertas ao público (sem login): documentos legais
+PUBLICAS = {"login", "static", "privacidade", "termos", "reembolso"}
+
+CSP = ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+       "script-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; "
+       "form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'")
+
+
+@app.after_request
+def cabecalhos_seguranca(resp):
+    resp.headers.setdefault("Content-Security-Policy", CSP)
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Referrer-Policy"] = "same-origin"
+    resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if config.COOKIE_SEGURO:
+        resp.headers["Strict-Transport-Security"] = "max-age=31536000"
+    if request.endpoint not in PUBLICAS:
+        resp.headers["Cache-Control"] = "no-store"  # páginas com dados pessoais não ficam no cache
+    return resp
+
+
+# Bloqueio após tentativas erradas de login (por IP, em memória)
+TENTATIVAS_MAX, JANELA_SEG = 5, 15 * 60
+_falhas: dict[str, list[float]] = {}
+
+
+def _bloqueado(ip: str) -> bool:
+    agora = time.time()
+    _falhas[ip] = [t for t in _falhas.get(ip, []) if agora - t < JANELA_SEG]
+    return len(_falhas[ip]) >= TENTATIVAS_MAX
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    ip = request.remote_addr or "?"
+    if request.method == "POST" and _bloqueado(ip):
+        flash("Muitas tentativas erradas. Aguarde 15 minutos e tente novamente.", "erro")
+        return render_template("login.html"), 429
     if request.method == "POST":
         usuario_ok = secrets.compare_digest(request.form.get("usuario", ""), config.ADMIN_USUARIO)
         senha_ok = secrets.compare_digest(request.form.get("senha", ""), config.ADMIN_SENHA)
         if usuario_ok and senha_ok:
+            _falhas.pop(ip, None)
+            session.clear()
+            session.permanent = True
             session["logado"] = True
             proximo = request.args.get("proximo", "")
             return redirect(proximo if proximo.startswith("/") and not proximo.startswith("//") else url_for("dashboard"))
+        _falhas.setdefault(ip, []).append(time.time())
         flash("Usuário ou senha inválidos.", "erro")
     return render_template("login.html")
 
@@ -131,7 +184,8 @@ def _form_aluno() -> dict:
         "cpf": f.get("cpf", "").strip() or None,
         "email": f.get("email", "").strip() or None,
         "telefone": f.get("telefone", "").strip() or None,
-        "data_nascimento": f.get("data_nascimento") or None,
+        "aceita_email": 1 if f.get("aceita_email") else 0,
+        "aceita_whatsapp": 1 if f.get("aceita_whatsapp") else 0,
         "plano_id": int(f["plano_id"]) if f.get("plano_id") else None,
         "data_inscricao": f.get("data_inscricao") or db.hoje().isoformat(),
         "data_vencimento": f.get("data_vencimento") or db.hoje().isoformat(),
@@ -151,10 +205,12 @@ def aluno_novo():
         try:
             with db.conectar() as con:
                 cur = con.execute(
-                    "INSERT INTO alunos (nome, cpf, email, telefone, data_nascimento, plano_id, "
-                    "data_inscricao, data_vencimento, observacoes) VALUES "
-                    "(:nome,:cpf,:email,:telefone,:data_nascimento,:plano_id,:data_inscricao,:data_vencimento,:observacoes)",
-                    dados,
+                    "INSERT INTO alunos (nome, cpf, email, telefone, plano_id, data_inscricao, data_vencimento, "
+                    "observacoes, aceita_email, aceita_whatsapp, termos_aceitos_em) VALUES "
+                    "(:nome,:cpf,:email,:telefone,:plano_id,:data_inscricao,:data_vencimento,:observacoes,"
+                    ":aceita_email,:aceita_whatsapp,:termos_aceitos_em)",
+                    {**dados, "termos_aceitos_em": datetime.now().isoformat(timespec="seconds")
+                     if request.form.get("termos_aceitos") else None},
                 )
                 aluno_id = cur.lastrowid
                 if request.form.get("pago_agora") and dados["plano_id"]:
@@ -171,7 +227,7 @@ def aluno_novo():
         flash(f"Aluno {dados['nome']} cadastrado!", "ok")
         return redirect(url_for("aluno_detalhe", aluno_id=aluno_id))
 
-    padrao = {"data_inscricao": db.hoje().isoformat(),
+    padrao = {"aceita_email": 1, "aceita_whatsapp": 1, "data_inscricao": db.hoje().isoformat(),
               "data_vencimento": (db.hoje() + timedelta(days=30)).isoformat(),
               "plano_id": planos[0]["id"] if planos else None}
     return render_template("aluno_form.html", aluno=padrao, planos=planos, novo=True, formas=FORMAS_PAGAMENTO)
@@ -185,6 +241,8 @@ def aluno_editar(aluno_id):
     if request.method == "POST":
         dados = _form_aluno()
         dados["id"] = aluno_id
+        dados["termos_aceitos_em"] = (datetime.now().isoformat(timespec="seconds")
+                                      if request.form.get("termos_aceitos") else None)
         if not dados["nome"]:
             flash("Informe o nome do aluno.", "erro")
             return render_template("aluno_form.html", aluno=dados, planos=planos, novo=False)
@@ -192,8 +250,9 @@ def aluno_editar(aluno_id):
             with db.conectar() as con:
                 con.execute(
                     "UPDATE alunos SET nome=:nome, cpf=:cpf, email=:email, telefone=:telefone, "
-                    "data_nascimento=:data_nascimento, plano_id=:plano_id, data_inscricao=:data_inscricao, "
-                    "data_vencimento=:data_vencimento, observacoes=:observacoes WHERE id=:id",
+                    "plano_id=:plano_id, data_inscricao=:data_inscricao, data_vencimento=:data_vencimento, "
+                    "observacoes=:observacoes, aceita_email=:aceita_email, aceita_whatsapp=:aceita_whatsapp, "
+                    "termos_aceitos_em=COALESCE(termos_aceitos_em, :termos_aceitos_em) WHERE id=:id",
                     dados,
                 )
         except sqlite3.IntegrityError:
@@ -297,9 +356,55 @@ def aluno_excluir(aluno_id):
     return redirect(url_for("alunos"))
 
 
+@app.route("/alunos/<int:aluno_id>/exportar")
+@login_obrigatorio
+def aluno_exportar(aluno_id):
+    dados = db.exportar_aluno(aluno_id) or abort(404)
+    dados["exportado_em"] = datetime.now().isoformat(timespec="seconds")
+    dados["controlador"] = {k: v for k, v in ajustes.empresa().items() if k in ("razao_social", "cnpj", "email_contato")}
+    return Response(
+        json.dumps(dados, ensure_ascii=False, indent=2),
+        mimetype="application/json",
+        headers={"Content-Disposition": f"attachment; filename=dados-aluno-{aluno_id}.json"},
+    )
+
+
+@app.post("/alunos/<int:aluno_id>/anonimizar")
+@login_obrigatorio
+def aluno_anonimizar(aluno_id):
+    db.obter_aluno(aluno_id) or abort(404)
+    db.anonimizar_aluno(aluno_id)
+    flash("Dados pessoais apagados. Ficaram só os valores pagos, exigidos pela legislação fiscal.", "ok")
+    return redirect(url_for("aluno_detalhe", aluno_id=aluno_id))
+
+
+# ---------------------------------------------------------------- documentos públicos
+
+def _documento(nome: str):
+    return render_template(f"legal/{nome}.html", e=ajustes.empresa(), DIAS_AVISO=config.DIAS_AVISO,
+                           retencao_avisos=config.RETENCAO_AVISOS_DIAS,
+                           atualizado=db.get_sistema("documentos_atualizados_em"))
+
+
+@app.route("/privacidade")
+def privacidade():
+    return _documento("privacidade")
+
+
+@app.route("/termos")
+def termos():
+    return _documento("termos")
+
+
+@app.route("/reembolso")
+def reembolso():
+    return _documento("reembolso")
+
+
 # ---------------------------------------------------------------- avisos
 
 ROTULO_RESULTADO = {"enviado": "enviado", "simulado": "registrado (modo simulado)",
+                    "não autorizado": "aluno pediu para não receber",
                     "erro": "ERRO", "sem contato": "sem contato cadastrado", "já enviado": "já enviado"}
 
 
@@ -439,7 +544,7 @@ NOMES_WHATSAPP = {"simulado": "Simulado", "zapi": "Z-API", "evolution": "Evoluti
 PROVEDORES_WHATSAPP_TELA = [
     ("simulado", "Só registra, não envia", "lock", "g-cinza"),
     ("zapi", "Seu número via QR Code", "whatsapp", "g-verde"),
-    ("evolution", "Gratuito, servidor próprio", "settings", "g-teal"),
+    ("evolution", "Software livre, servidor próprio", "settings", "g-teal"),
     ("meta", "API oficial do WhatsApp", "building", "g-azul"),
     ("twilio", "API oficial via Twilio", "send", "g-vermelho"),
 ]
@@ -462,7 +567,15 @@ def configuracoes():
         if valores.get("smtp_porta") and not valores["smtp_porta"].isdigit():
             flash("A porta SMTP deve ser um número.", "erro")
             return redirect(url_for("configuracoes"))
+        try:
+            assert 0 <= float((valores.get("retencao_cancelamento_pct") or "0").replace(",", ".")) <= 100
+            assert (valores.get("prazo_reembolso_dias") or "30").isdigit()
+        except (ValueError, AssertionError):
+            flash("Multa deve ser um percentual de 0 a 100 e o prazo de reembolso um número de dias.", "erro")
+            return redirect(url_for("configuracoes") + "#empresa")
+        valores["retencao_cancelamento_pct"] = (valores.get("retencao_cancelamento_pct") or "0").replace(",", ".")
         ajustes.salvar(valores)
+        db.set_sistema("documentos_atualizados_em", db.hoje().isoformat())
         flash("Configurações salvas.", "ok")
         return redirect(url_for("configuracoes"))
     valores = {k: ajustes.obter(k) for k in ajustes.CAMPOS}

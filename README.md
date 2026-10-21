@@ -3,8 +3,8 @@
 Sistema simples para controlar mensalistas: cadastro de inscritos, validade dos planos,
 pagamentos, faturamento do mês e **avisos automáticos de vencimento por e-mail e WhatsApp**.
 
-Feito em **Python + Flask + SQLite**: não precisa instalar banco de dados, roda em qualquer
-computador (Windows, Mac ou Linux) ou servidor.
+Feito em **Python + Flask + SQLite**: não precisa instalar banco de dados. Roda em Windows, Mac ou Linux
+com Python 3.10 ou mais novo.
 
 ## Funcionalidades
 
@@ -17,6 +17,7 @@ computador (Windows, Mac ou Linux) ou servidor.
 | **Financeiro** | Pagamentos de qualquer mês, total recebido, ticket médio e total por forma de pagamento |
 | **Avisos e cobrança** | Histórico de todos os avisos enviados, status do e-mail e WhatsApp, e botão "Executar cobrança agora" |
 | **Planos** | Mensal, trimestral, semestral… (valor e duração em dias) |
+| **Documentos públicos** | `/privacidade`, `/termos` e `/reembolso`, sem login, preenchidos com os dados legais da empresa |
 | **Configurações** | Nome da academia, telefone, chave PIX **servidor de e-mail** (com atalhos para Gmail, Outlook, Hostinger, Locaweb, Zoho) e **provedor de WhatsApp**, com botões de **teste** para os dois e pré-visualização do e-mail |
 
 ### Como funciona a cobrança automática
@@ -84,7 +85,7 @@ dados que aparecem, salve e use **Enviar WhatsApp de teste**.
 | Provedor | Quando usar | O que preencher |
 |---|---|---|
 | **Z-API** | Mais simples no Brasil: conecta o número da academia lendo um QR Code. Serviço pago | ID da instância, Token e Client-Token (se ativado) |
-| **Evolution API** | Gratuito/open-source, você hospeda | URL do servidor, nome da instância e API key |
+| **Evolution API** | Software gratuito (open-source); você paga só o servidor onde ele roda | URL do servidor, nome da instância e API key |
 | **Meta Cloud API** | API oficial do WhatsApp Business. Exige template aprovado para avisar quem não falou com você nas últimas 24h | Phone number ID, token e nome do template |
 | **Twilio** | API oficial via Twilio | Account SID, Auth Token e número remetente |
 
@@ -130,9 +131,24 @@ academia/
 ├── cobranca.py       # rotina diária de cobrança automática
 ├── config.py         # leitura do .env
 ├── seed.py           # dados de exemplo
-├── templates/        # páginas HTML (+ email_aviso.html, modelo do e-mail)
+├── templates/        # páginas HTML (+ email_aviso.html; legal/ = documentos públicos)
+├── docs/CONFORMIDADE.md  # revisão LGPD, acessibilidade e segurança
+├── LICENCAS_TERCEIROS.md # licenças de ícones e fonte
 └── static/style.css
 ```
+
+## Privacidade, acessibilidade e segurança
+
+Resumo da revisão (detalhes em [`docs/CONFORMIDADE.md`](docs/CONFORMIDADE.md)):
+
+- **LGPD:** coleta mínima (sem data de nascimento, CPF opcional), autorização de avisos por canal, registro do aceite dos
+  termos, exportação e anonimização de dados na ficha do aluno, histórico de avisos apagado após `RETENCAO_AVISOS_DIAS`.
+- **Sem rastreamento:** nenhum analytics ou script de terceiros. A fonte é servida pelo próprio sistema e o único cookie é o de sessão.
+- **Acessibilidade:** 0 ocorrências na auditoria axe-core (WCAG 2.1 AA). Antes eram 477.
+- **Segurança:** bloqueio após 5 logins errados, cabeçalhos de segurança (CSP etc.), chave de sessão aleatória e alerta de senha padrão.
+- **Cobrança não abusiva:** avisos só em horário comercial e no máximo `MAX_LEMBRETES_SEMANAIS` lembretes semanais.
+
+Os documentos legais são modelos: preencha **Configurações → Dados legais** e peça revisão a um advogado.
 
 ## Regras usadas
 

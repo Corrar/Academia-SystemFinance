@@ -25,7 +25,8 @@
       {% if a.telefone %}<span class="chip">{{ icone('phone', 12) }} {{ a.telefone }}</span>{% endif %}
     </div>
     {% if a.status != 'inativo' %}
-    <div class="trilha {{ tom }}">
+    <p class="sr-only">Ciclo do plano {{ a.ciclo_pct }}% decorrido.</p>
+    <div class="trilha {{ tom }}" aria-hidden="true">
       <span class="barra" style="width: calc((100% - 24px) * {{ a.ciclo_pct / 100 }})"></span>
       <span class="no cheio {{ 'verde' if tom == 'verde' }}" title="Início do ciclo">{{ icone('calendar', 12) }}</span>
       {% if a.dias < 0 %}
@@ -34,7 +35,7 @@
         <span class="no" title="Vencimento">{{ icone('check', 12) }}</span>
       {% endif %}
     </div>
-    <div class="etapas"><span>{{ a.inicio_ciclo[8:10] }}/{{ a.inicio_ciclo[5:7] }}</span><span>{{ a.data_vencimento[8:10] }}/{{ a.data_vencimento[5:7] }}</span></div>
+    <div class="etapas" aria-hidden="true"><span>{{ a.inicio_ciclo[8:10] }}/{{ a.inicio_ciclo[5:7] }}</span><span>{{ a.data_vencimento[8:10] }}/{{ a.data_vencimento[5:7] }}</span></div>
     {% endif %}
   </div>
   <div class="tcard-foot">
@@ -47,7 +48,7 @@
       </div>
       {% endif %}
     </div>
-    <a class="link-det" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">Ver detalhes {{ icone('chevron-right', 14) }}</a>
+    <a class="link-det" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}" aria-label="Ver detalhes de {{ a.nome }}">Ver detalhes {{ icone('chevron-right', 14) }}</a>
   </div>
 </article>
 {% endmacro %}
@@ -60,7 +61,7 @@
 <article class="tcard t-vermelho realce-vermelho">
   <div class="tcard-head">
     <span class="mini">{{ icone('alert', 15) }}</span>
-    <div><strong>{{ -a.dias }} dias em atraso</strong><small>venceu em {{ a.data_vencimento|data_br }} · {{ enviados|length }} aviso(s) enviado(s)</small></div>
+    <div><strong>{{ -a.dias }} dias em atraso</strong><small>venceu em {{ a.data_vencimento|data_br }} · {{ enviados|length }} aviso{{ 's' if enviados|length != 1 }}</small></div>
   </div>
   <div class="tcard-body">
     <a class="tcard-nome" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">{{ icone('user', 15) }} {{ a.nome }}</a>
@@ -68,7 +69,8 @@
       <span class="chip">{{ icone('tag', 12) }} {{ a.plano_nome or 'Sem plano' }}</span>
       {% if a.telefone %}<span class="chip">{{ icone('phone', 12) }} {{ a.telefone }}</span>{% endif %}
     </div>
-    <div class="trilha">
+    <p class="sr-only">Avisos automáticos enviados: {{ enviados|length }}.</p>
+    <div class="trilha" aria-hidden="true">
       {% if DIAS_AVISO|length > 1 and ultimo > 0 %}
       <span class="barra" style="width: calc((100% - 24px) * {{ ultimo / (DIAS_AVISO|length - 1) }})"></span>
       {% endif %}
@@ -78,20 +80,20 @@
         </span>
       {% endfor %}
     </div>
-    <div class="etapas">{% for d in DIAS_AVISO %}<span>{{ 'venc.' if d == 0 else '%+dd'|format(d) }}</span>{% endfor %}</div>
+    <div class="etapas" aria-hidden="true">{% for d in DIAS_AVISO %}<span>{{ 'venc.' if d == 0 else '%+dd'|format(d) }}</span>{% endfor %}</div>
   </div>
   <div class="tcard-foot">
     <div class="metrica"><div class="rot">Em aberto</div><div class="val vermelho">{{ a.plano_valor|moeda }}</div></div>
     <div class="acoes">
-      {% for canal, ic, ok in [('email', 'mail', a.email), ('whatsapp', 'whatsapp', a.telefone)] %}
+      {% for canal, ic, ok in [('email', 'mail', a.email and a.aceita_email), ('whatsapp', 'whatsapp', a.telefone and a.aceita_whatsapp)] %}
       <form method="post" action="{{ url_for('avisar_aluno', aluno_id=a.id) }}">
         <input type="hidden" name="csrf" value="{{ csrf_token }}">
         <input type="hidden" name="canal" value="{{ canal }}">
         <input type="hidden" name="voltar" value="{{ voltar }}">
-        <button class="btn sm quadrado {{ 'whats' if canal == 'whatsapp' }}" {{ 'disabled' if not ok }} title="Enviar aviso por {{ 'e-mail' if canal == 'email' else 'WhatsApp' }}">{{ icone(ic, 15) }}</button>
+        <button class="btn sm quadrado {{ 'whats' if canal == 'whatsapp' }}" {{ 'disabled' if not ok }} title="Enviar aviso por {{ 'e-mail' if canal == 'email' else 'WhatsApp' }}" aria-label="Enviar aviso por {{ 'e-mail' if canal == 'email' else 'WhatsApp' }} para {{ a.nome }}">{{ icone(ic, 15) }}</button>
       </form>
       {% endfor %}
-      <a class="btn sm primario" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}#pagamento">Receber</a>
+      <a class="btn sm primario" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}#pagamento" aria-label="Receber pagamento de {{ a.nome }}">Receber</a>
     </div>
   </div>
 </article>

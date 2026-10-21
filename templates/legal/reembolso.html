@@ -1,0 +1,32 @@
+{% extends "legal/_base.html" %}
+{% from "legal/_macros.html" import campo %}
+{% block titulo %}Cancelamento e reembolso{% endblock %}
+{% block titulo_pagina %}Política de cancelamento e reembolso{% endblock %}
+{% block documento %}
+{% set retencao = (e.retencao_cancelamento_pct or '0')|float %}
+<h2>1. Direito de arrependimento (7 dias)</h2>
+<p>Se o plano foi contratado fora da academia (por internet, telefone ou WhatsApp), o aluno pode desistir em até
+<strong>7 dias</strong> da contratação, sem justificativa, e recebe de volta <strong>todo</strong> o valor pago
+(art. 49 do Código de Defesa do Consumidor).</p>
+
+<h2>2. Cancelamento a qualquer momento</h2>
+<ul>
+  <li><strong>Plano mensal:</strong> o cancelamento interrompe as próximas cobranças. O mês já pago continua válido até o vencimento.</li>
+  <li><strong>Planos com mais de um mês pagos antecipadamente</strong> (trimestral, semestral etc.): o aluno recebe de
+    volta o valor proporcional ao período <strong>ainda não utilizado</strong>{% if retencao > 0 %}, descontada uma
+    multa de {{ '%g'|format(retencao) }}% sobre esse saldo, como compensação pelo desconto do plano mais longo{% endif %}.</li>
+</ul>
+
+<h2>3. Como pedir</h2>
+<p>O pedido pode ser feito na recepção ou pelo e-mail
+{% if e.email_contato %}<a href="mailto:{{ e.email_contato }}">{{ e.email_contato }}</a>{% else %}{{ campo('', 'e-mail de contato') }}{% endif %}.
+Informamos o valor a devolver e o comprovante do cálculo.</p>
+
+<h2>4. Prazo e forma do reembolso</h2>
+<p>O reembolso é feito em até <strong>{{ e.prazo_reembolso_dias or '30' }} dias</strong> após o pedido, pela mesma forma
+de pagamento usada ou, se o aluno preferir, por PIX. Pagamentos com cartão de crédito são estornados na fatura, conforme o
+prazo da operadora do cartão.</p>
+
+<h2>5. Pagamento em duplicidade ou indevido</h2>
+<p>Valores pagos em duplicidade ou cobrados por engano são devolvidos integralmente, com correção, assim que identificados.</p>
+{% endblock %}

@@ -51,7 +51,7 @@ def main() -> None:
                      rnd.choice(["PIX", "PIX", "PIX", "Dinheiro", "Cartão de crédito", "Cartão de débito"])),
                 )
                 ini = fim
-    print(f"{len(NOMES)} alunos de exemplo cadastrados.")
+    print(f"{len(NOMES)} alunos FICTÍCIOS de demonstração cadastrados. Não use em produção: apague academia.db antes.")
 
 
 if __name__ == "__main__":

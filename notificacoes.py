@@ -84,6 +84,7 @@ def montar_mensagem(aluno: dict) -> tuple[str, str]:
     texto += "\n\nSe já pagou, por favor desconsidere esta mensagem."
     if telefone:
         texto += f"\nDúvidas: {telefone}"
+    texto += "\nSe não quiser mais receber estes avisos, é só nos responder."
     return assunto, texto
 
 
@@ -105,7 +106,7 @@ def montar_email_html(aluno: dict) -> str:
         vencimento=data_br(aluno["data_vencimento"]),
         valor=moeda(aluno.get("plano_valor")),
         plano=aluno.get("plano_nome") or "Mensalidade",
-        tom=tom, rotulo=rotulo, detalhe=detalhe, dias=dias,
+        tom=tom, rotulo=rotulo, detalhe=detalhe, dias=dias, empresa=ajustes.empresa(),
     )
 
 
@@ -245,6 +246,9 @@ def notificar(aluno: dict, canais=("email", "whatsapp"), chave: str | None = Non
     resultado = {}
 
     for canal in canais:
+        if not aluno.get("aceita_" + canal, 1):
+            resultado[canal] = "não autorizado"
+            continue
         if chave and ja_enviado(aluno["id"], chave, canal):
             resultado[canal] = "já enviado"
             continue

@@ -18,10 +18,10 @@
       {% if p.ativo %}<span class="pill azul">{{ icone('users', 11) }} {{ contagem.get(p.id, 0) }} aluno(s)</span>
       {% else %}<span class="pill">{{ icone('lock', 11) }} Inativo</span>{% endif %}
     </div>
-    <div class="campo"><label>Nome</label><input name="nome" value="{{ p.nome }}" required></div>
+    <label class="campo"><span class="rotulo-campo">Nome</span><input name="nome" value="{{ p.nome }}" required></label>
     <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-top:10px;gap:10px">
-      <div class="campo"><label>Valor (R$)</label><input name="valor" value="{{ '%.2f'|format(p.valor) }}" inputmode="decimal" required></div>
-      <div class="campo"><label>Dias</label><input name="duracao_dias" type="number" min="1" value="{{ p.duracao_dias }}" required></div>
+      <label class="campo"><span class="rotulo-campo">Valor (R$)</span><input name="valor" value="{{ '%.2f'|format(p.valor) }}" inputmode="decimal" required></label>
+      <label class="campo"><span class="rotulo-campo">Dias</span><input name="duracao_dias" type="number" min="1" value="{{ p.duracao_dias }}" required></label>
     </div>
     <div class="linha-botoes" style="justify-content:space-between;margin-top:14px">
       <label class="check"><input type="checkbox" name="ativo" value="1" {{ 'checked' if p.ativo }}> Ativo</label>
@@ -33,10 +33,10 @@
   <form method="post" class="modulo novo">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <div class="topo-kpi"><span class="ico g-cinza">{{ icone('plus', 20) }}</span><span class="pill">Novo</span></div>
-    <div class="campo"><label>Nome</label><input name="nome" placeholder="Ex.: Anual" required></div>
+    <label class="campo"><span class="rotulo-campo">Nome</span><input name="nome" placeholder="Ex.: Anual" required></label>
     <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-top:10px;gap:10px">
-      <div class="campo"><label>Valor (R$)</label><input name="valor" placeholder="1100,00" inputmode="decimal" required></div>
-      <div class="campo"><label>Dias</label><input name="duracao_dias" type="number" min="1" value="30" required></div>
+      <label class="campo"><span class="rotulo-campo">Valor (R$)</span><input name="valor" placeholder="1100,00" inputmode="decimal" required></label>
+      <label class="campo"><span class="rotulo-campo">Dias</span><input name="duracao_dias" type="number" min="1" value="30" required></label>
     </div>
     <div class="linha-botoes" style="margin-top:14px"><button class="btn sm bloco">{{ icone('plus', 14) }} Adicionar plano</button></div>
   </form>

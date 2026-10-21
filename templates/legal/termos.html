@@ -1,0 +1,45 @@
+{% extends "legal/_base.html" %}
+{% from "legal/_macros.html" import campo %}
+{% block titulo %}Termos de uso{% endblock %}
+{% block titulo_pagina %}Termos de uso e contratação{% endblock %}
+{% block documento %}
+<p>Estes termos tratam da contratação dos planos da {{ e.academia_nome }} e dos avisos de cobrança enviados aos alunos.
+As regras de uso das instalações (horários, vestuário, equipamentos) ficam no regulamento interno da academia,
+disponível na recepção.</p>
+
+<h2>1. Planos e pagamento</h2>
+<ul>
+  <li>O aluno escolhe um plano (por exemplo, mensal, trimestral ou semestral). O valor e a duração são informados antes da contratação.</li>
+  <li>O pagamento é antecipado e dá direito ao uso da academia até a data de validade do plano.</li>
+  <li>Ao renovar, a nova validade é contada a partir do vencimento anterior, mantendo o mesmo dia de vencimento.
+    Se o plano estiver vencido há mais tempo do que a duração do plano, a validade é contada a partir da data do pagamento.</li>
+  <li>Os valores podem ser reajustados. O reajuste vale apenas para as renovações seguintes e é comunicado com antecedência.</li>
+</ul>
+
+<h2>2. Avisos de vencimento</h2>
+<p>Para ajudar o aluno a não perder o prazo, a academia envia avisos por e-mail e/ou WhatsApp, em horário comercial, nas datas abaixo:</p>
+<ul>
+  {% for d in DIAS_AVISO %}
+  <li>{{ (d|abs ~ ' dia(s) antes do vencimento') if d < 0 else ('no dia do vencimento' if d == 0 else d ~ ' dia(s) depois do vencimento, se não houver pagamento') }};</li>
+  {% endfor %}
+  <li>depois disso, no máximo um lembrete por semana, por tempo limitado.</li>
+</ul>
+<p>As mensagens são cordiais, informam o valor e a data de vencimento e nunca expõem o aluno a terceiros. O aluno pode
+pedir, a qualquer momento, para não recebê-las por um ou pelos dois canais.</p>
+
+<h2>3. Atraso</h2>
+<p>Com a mensalidade em atraso, a academia pode suspender o acesso até a regularização. Se houver multa ou juros por
+atraso, os percentuais são informados na contratação e respeitam os limites do Código de Defesa do Consumidor.</p>
+
+<h2>4. Cancelamento</h2>
+<p>O aluno pode cancelar o plano quando quiser. As regras de cancelamento, arrependimento e reembolso estão na
+<a href="{{ url_for('reembolso') }}">Política de cancelamento e reembolso</a>.</p>
+
+<h2>5. Dados pessoais</h2>
+<p>O tratamento dos dados do aluno segue a <a href="{{ url_for('privacidade') }}">Política de privacidade</a>.</p>
+
+<h2>6. Atendimento e foro</h2>
+<p>Dúvidas e reclamações podem ser feitas na recepção ou pelos contatos no fim desta página. Fica eleito o foro do
+domicílio do aluno, conforme o Código de Defesa do Consumidor{% if e.cidade_foro %}. Para alunos domiciliados fora do
+Brasil, fica eleito o foro da comarca de {{ e.cidade_foro }}{% endif %}.</p>
+{% endblock %}

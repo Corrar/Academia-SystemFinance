@@ -22,7 +22,8 @@ def executar_cobranca() -> dict:
     A `chave` (vencimento + dia relativo) garante que cada aviso só seja
     enviado uma vez, mesmo que a rotina rode várias vezes no mesmo dia.
     Quem está inadimplente e passou do último dia configurado recebe
-    um novo aviso a cada 7 dias até regularizar.
+    um novo aviso a cada 7 dias, no máximo MAX_LEMBRETES_SEMANAIS vezes.
+    Alunos que pediram para não receber avisos em um canal são respeitados.
     """
     with _trava:
         hoje = db.hoje()
@@ -38,8 +39,9 @@ def executar_cobranca() -> dict:
             dia_aviso = None
             if relativo in config.DIAS_AVISO:
                 dia_aviso = relativo
-            elif ultimo is not None and ultimo > 0 and relativo > ultimo and (relativo - ultimo) % 7 == 0:
-                dia_aviso = relativo  # lembrete semanal p/ inadimplentes
+            elif (ultimo is not None and ultimo > 0 and relativo > ultimo and (relativo - ultimo) % 7 == 0
+                  and (relativo - ultimo) // 7 <= config.MAX_LEMBRETES_SEMANAIS):
+                dia_aviso = relativo  # lembrete semanal p/ inadimplentes, com limite
 
             if dia_aviso is None:
                 continue
@@ -52,6 +54,7 @@ def executar_cobranca() -> dict:
                 resumo["erros"] += 1
             resumo["detalhes"].append({"aluno": aluno["nome"], "dia": dia_aviso, "resultado": res})
 
+        resumo["avisos_apagados"] = db.limpar_avisos_antigos(config.RETENCAO_AVISOS_DIAS)
         db.set_sistema("ultima_cobranca", datetime.now().isoformat(timespec="seconds"))
         db.set_sistema("ultima_cobranca_dia", hoje.isoformat())
         return resumo

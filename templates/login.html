@@ -3,31 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
   <title>Entrar · {{ academia }}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div class="login-pg">
+<main class="login-pg">
   <form method="post" class="login-box">
-    <div class="logo"><span class="logo-mark"></span><span>{{ academia }}</span></div>
+    <div class="logo"><span class="logo-mark" aria-hidden="true"></span><span>{{ academia }}</span></div>
     <div class="hero" style="margin-bottom:22px">
-      <div class="saudacao">Bem-vindo de volta 👋</div>
+      <p class="saudacao">Bem-vindo de volta 👋</p>
       <h1>Acesse o painel</h1>
       <p class="sub">Controle de mensalistas e cobranças</p>
     </div>
     {% for cat, msg in get_flashed_messages(with_categories=true) %}
-      <div class="flash {{ cat }}">{{ icone('alert', 17) }} {{ msg }}</div>
+      <div class="flash {{ cat }}" role="alert">{{ icone('alert', 17) }} {{ msg }}</div>
     {% endfor %}
     <div class="card">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
       <div class="campo"><label for="usuario">Usuário</label><input id="usuario" name="usuario" required autofocus autocomplete="username"></div>
       <div class="campo" style="margin-top:14px"><label for="senha">Senha</label><input id="senha" name="senha" type="password" required autocomplete="current-password"></div>
-      <div class="linha-botoes"><button class="btn primario bloco">Entrar {{ icone('arrow-right', 16) }}</button></div>
+      <div class="linha-botoes"><button type="submit" class="btn primario bloco">Entrar {{ icone('arrow-right', 16) }}</button></div>
     </div>
+    <p class="sub" style="text-align:center;margin-top:18px;font-size:12px">
+      Este painel usa apenas um cookie essencial de sessão, sem rastreamento.
+      <br><a href="{{ url_for('privacidade') }}">Política de privacidade</a> · <a href="{{ url_for('termos') }}">Termos de uso</a>
+    </p>
   </form>
-</div>
+</main>
 </body>
 </html>

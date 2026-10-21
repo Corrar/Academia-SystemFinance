@@ -13,18 +13,18 @@
 <form class="barra-busca" method="get">
   <label class="busca" aria-label="Buscar">
     {{ icone('search', 17) }}
-    <input type="search" name="q" value="{{ termo }}" placeholder="Buscar por nome, CPF, telefone ou e-mail…">
+    <input type="search" name="q" value="{{ termo }}" aria-label="Buscar alunos" placeholder="Buscar por nome, CPF, telefone ou e-mail…">
   </label>
   {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
   <span class="contador" style="margin-left:auto">{{ alunos|length }} de {{ total }} alunos</span>
 </form>
 
-<div class="filtros" style="margin-bottom:18px">
-  <a class="filtro {{ 'ativo' if not status }}" href="{{ url_for('alunos', q=termo or None) }}">Todos <b>{{ total }}</b></a>
+<nav class="filtros" style="margin-bottom:18px" aria-label="Filtrar por situação">
+  <a class="filtro {{ 'ativo' if not status }}" {{ 'aria-current="true"'|safe if not status }} href="{{ url_for('alunos', q=termo or None) }}">Todos <b>{{ total }}</b></a>
   {% for k, v in STATUS_ROTULO.items() %}
-    <a class="filtro {{ 'ativo' if status == k }}" href="{{ url_for('alunos', q=termo or None, status=k) }}">{{ v }} <b>{{ contagem[k] }}</b></a>
+    <a class="filtro {{ 'ativo' if status == k }}" {{ 'aria-current="true"'|safe if status == k }} href="{{ url_for('alunos', q=termo or None, status=k) }}">{{ v }} <b>{{ contagem[k] }}</b></a>
   {% endfor %}
-</div>
+</nav>
 
 <div class="cards">
   {% for a in alunos %}

@@ -1,0 +1,16 @@
+<footer class="rodape">
+  <div class="dentro">
+    <div>
+      <strong>{{ empresa.razao_social or academia }}</strong>
+      {% if empresa.cnpj %} · CNPJ {{ empresa.cnpj }}{% endif %}
+      {% if empresa.endereco %}<br>{{ empresa.endereco }}{% endif %}
+      {% if empresa.email_contato %}<br>Contato: <a href="mailto:{{ empresa.email_contato }}">{{ empresa.email_contato }}</a>{% endif %}
+      {% if empresa.academia_telefone %} · {{ empresa.academia_telefone }}{% endif %}
+    </div>
+    <nav aria-label="Documentos">
+      <a href="{{ url_for('privacidade') }}">Política de privacidade</a>
+      <a href="{{ url_for('termos') }}">Termos de uso</a>
+      <a href="{{ url_for('reembolso') }}">Cancelamento e reembolso</a>
+    </nav>
+  </div>
+</footer>

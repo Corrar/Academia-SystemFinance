@@ -24,7 +24,11 @@ CREATE TABLE IF NOT EXISTS alunos (
     data_inscricao   TEXT NOT NULL,
     data_vencimento  TEXT NOT NULL,
     ativo            INTEGER NOT NULL DEFAULT 1,
-    observacoes      TEXT
+    observacoes      TEXT,
+    aceita_email     INTEGER NOT NULL DEFAULT 1,
+    aceita_whatsapp  INTEGER NOT NULL DEFAULT 1,
+    termos_aceitos_em TEXT,
+    anonimizado_em   TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pagamentos (
@@ -75,9 +79,25 @@ def conectar() -> sqlite3.Connection:
     return con
 
 
+# Colunas adicionadas depois da primeira versão (bancos antigos recebem via ALTER TABLE)
+MIGRACOES = {
+    "alunos": {
+        "aceita_email": "INTEGER NOT NULL DEFAULT 1",
+        "aceita_whatsapp": "INTEGER NOT NULL DEFAULT 1",
+        "termos_aceitos_em": "TEXT",
+        "anonimizado_em": "TEXT",
+    },
+}
+
+
 def iniciar_banco() -> None:
     with conectar() as con:
         con.executescript(ESQUEMA)
+        for tabela, colunas in MIGRACOES.items():
+            existentes = {r[1] for r in con.execute(f"PRAGMA table_info({tabela})")}
+            for coluna, tipo in colunas.items():
+                if coluna not in existentes:
+                    con.execute(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {tipo}")
         if con.execute("SELECT COUNT(*) FROM planos").fetchone()[0] == 0:
             con.executemany(
                 "INSERT INTO planos (nome, valor, duracao_dias) VALUES (?,?,?)", PLANOS_PADRAO
@@ -283,3 +303,35 @@ def set_sistema(chave: str, valor: str) -> None:
             "ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor",
             (chave, valor),
         )
+
+
+# ---------------------------------------------------------------- LGPD
+
+def exportar_aluno(aluno_id: int) -> dict | None:
+    """Todos os dados pessoais do aluno (direito de acesso/portabilidade, art. 18 da LGPD)."""
+    with conectar() as con:
+        aluno = con.execute(SQL_ALUNO + " WHERE a.id = ?", (aluno_id,)).fetchone()
+        if not aluno:
+            return None
+        pagamentos = con.execute("SELECT * FROM pagamentos WHERE aluno_id = ? ORDER BY data_pagamento", (aluno_id,)).fetchall()
+        avisos = con.execute("SELECT canal, tipo, destino, status, mensagem, criado_em FROM notificacoes "
+                             "WHERE aluno_id = ? ORDER BY id", (aluno_id,)).fetchall()
+    return {"aluno": dict(aluno), "pagamentos": [dict(p) for p in pagamentos], "avisos": [dict(a) for a in avisos]}
+
+
+def anonimizar_aluno(aluno_id: int) -> None:
+    """Apaga os dados pessoais e mantém só os valores pagos (exigidos pela legislação fiscal)."""
+    with conectar() as con:
+        con.execute(
+            "UPDATE alunos SET nome = ?, cpf = NULL, email = NULL, telefone = NULL, data_nascimento = NULL, "
+            "observacoes = NULL, ativo = 0, aceita_email = 0, aceita_whatsapp = 0, "
+            "anonimizado_em = datetime('now','localtime') WHERE id = ?",
+            (f"Aluno removido #{aluno_id}", aluno_id),
+        )
+        con.execute("DELETE FROM notificacoes WHERE aluno_id = ?", (aluno_id,))
+
+
+def limpar_avisos_antigos(dias: int) -> int:
+    with conectar() as con:
+        return con.execute("DELETE FROM notificacoes WHERE criado_em < datetime('now','localtime', ?)",
+                           (f"-{dias} days",)).rowcount

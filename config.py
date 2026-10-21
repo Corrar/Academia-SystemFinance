@@ -39,11 +39,37 @@ CHAVE_PIX = _env("CHAVE_PIX")
 
 ADMIN_USUARIO = _env("ADMIN_USUARIO", "admin")
 ADMIN_SENHA = _env("ADMIN_SENHA", "admin123")
-SECRET_KEY = _env("SECRET_KEY", "dev-inseguro-troque")
+SENHA_PADRAO = ADMIN_SENHA == "admin123"
+
+
+def _chave_secreta() -> str:
+    """Usa SECRET_KEY do .env; se não houver, gera uma aleatória e guarda em .secret_key."""
+    chave = _env("SECRET_KEY")
+    if chave and chave not in ("dev-inseguro-troque", "troque-por-uma-chave-longa-e-aleatoria"):
+        return chave
+    arquivo = BASE_DIR / ".secret_key"
+    if not arquivo.exists():
+        import secrets
+        arquivo.write_text(secrets.token_hex(32), encoding="utf-8")
+        try:
+            arquivo.chmod(0o600)
+        except OSError:
+            pass
+    return arquivo.read_text(encoding="utf-8").strip()
+
+
+SECRET_KEY = _chave_secreta()
+# Defina COOKIE_SEGURO=1 quando o sistema estiver publicado com HTTPS
+COOKIE_SEGURO = _env("COOKIE_SEGURO") == "1"
 
 DIAS_INADIMPLENCIA = _int("DIAS_INADIMPLENCIA", 10)
 DIAS_AVISO = sorted({int(d) for d in _env("DIAS_AVISO", "-3,0,3,10").split(",") if d.strip().lstrip("-").isdigit()})
-HORA_COBRANCA = _int("HORA_COBRANCA", 9)
+# Avisos só em horário comercial (8h às 20h), para não incomodar o aluno
+HORA_COBRANCA = min(max(_int("HORA_COBRANCA", 9), 8), 20)
+# Depois do último dia de DIAS_AVISO, no máximo N lembretes semanais (evita cobrança abusiva)
+MAX_LEMBRETES_SEMANAIS = _int("MAX_LEMBRETES_SEMANAIS", 4)
+# Histórico de avisos é apagado depois de N dias (minimização de dados - LGPD)
+RETENCAO_AVISOS_DIAS = _int("RETENCAO_AVISOS_DIAS", 365)
 
 SMTP_HOST = _env("SMTP_HOST")
 SMTP_PORTA = _int("SMTP_PORTA", 587)

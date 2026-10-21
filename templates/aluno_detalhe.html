@@ -32,17 +32,18 @@
         {% if aluno.dias > 0 %}faltam {{ aluno.dias }} dia(s){% elif aluno.dias == 0 %}vence hoje{% else %}vencido há {{ -aluno.dias }} dia(s){% endif %}
       </div>
       {% if aluno.ativo %}
-      <div class="trilha {{ tom }}">
+      <p class="sr-only">Ciclo do plano: {{ aluno.ciclo_pct }}% decorrido, de {{ aluno.inicio_ciclo|data_br }} a {{ aluno.data_vencimento|data_br }}.</p>
+      <div class="trilha {{ tom }}" aria-hidden="true">
         <span class="barra" style="width: calc((100% - 24px) * {{ aluno.ciclo_pct / 100 }})"></span>
         <span class="no cheio {{ 'verde' if tom == 'verde' }}">{{ icone('calendar', 12) }}</span>
         {% if aluno.dias < 0 %}<span class="no vermelho">{{ icone('alert', 12) }}</span>{% else %}<span class="no">{{ icone('check', 12) }}</span>{% endif %}
       </div>
-      <div class="etapas"><span>{{ aluno.inicio_ciclo[8:10] }}/{{ aluno.inicio_ciclo[5:7] }}</span><span>{{ aluno.data_vencimento[8:10] }}/{{ aluno.data_vencimento[5:7] }}</span></div>
+      <div class="etapas" aria-hidden="true"><span>{{ aluno.inicio_ciclo[8:10] }}/{{ aluno.inicio_ciclo[5:7] }}</span><span>{{ aluno.data_vencimento[8:10] }}/{{ aluno.data_vencimento[5:7] }}</span></div>
       {% endif %}
       <hr class="divisor">
       <dl class="dados">
         <div><dt>CPF</dt><dd>{{ aluno.cpf or '-' }}</dd></div>
-        <div><dt>Nascimento</dt><dd>{{ aluno.data_nascimento|data_br }}</dd></div>
+        <div><dt>Avisos autorizados</dt><dd>{{ ['E-mail' if aluno.aceita_email, 'WhatsApp' if aluno.aceita_whatsapp]|select|join(' e ') or 'nenhum' }}</dd></div>
         <div><dt>WhatsApp</dt><dd>{{ aluno.telefone or '-' }}</dd></div>
         <div><dt>E-mail</dt><dd>{{ aluno.email or '-' }}</dd></div>
       </dl>
@@ -64,10 +65,10 @@
     <form method="post" action="{{ url_for('registrar_pagamento', aluno_id=aluno.id) }}">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
       <div class="form-grid">
-        <div class="campo"><label>Valor (R$)</label><input name="valor" value="{{ '%.2f'|format(aluno.plano_valor or 0) }}" inputmode="decimal" required></div>
-        <div class="campo"><label>Data do pagamento</label><input type="date" name="data_pagamento" value="{{ hoje.isoformat() }}" required></div>
-        <div class="campo"><label>Forma</label><select name="forma">{% for f in formas %}<option>{{ f }}</option>{% endfor %}</select></div>
-        <div class="campo"><label>Nova validade</label><input type="date" name="nova_validade" value="{{ validade_sugerida }}" required></div>
+        <label class="campo"><span class="rotulo-campo">Valor (R$)</span><input name="valor" value="{{ '%.2f'|format(aluno.plano_valor or 0) }}" inputmode="decimal" required></label>
+        <label class="campo"><span class="rotulo-campo">Data do pagamento</span><input type="date" name="data_pagamento" value="{{ hoje.isoformat() }}" required></label>
+        <label class="campo"><span class="rotulo-campo">Forma</span><select name="forma">{% for f in formas %}<option>{{ f }}</option>{% endfor %}</select></label>
+        <label class="campo"><span class="rotulo-campo">Nova validade</span><input type="date" name="nova_validade" value="{{ validade_sugerida }}" required></label>
       </div>
       <div class="linha-botoes"><button class="btn primario">{{ icone('check', 15) }} Confirmar pagamento</button></div>
     </form>
@@ -81,14 +82,15 @@
   </div>
   <div class="msg-preview">{{ preview }}</div>
   <div class="linha-botoes">
-    {% for canal, ic, rotulo, ok in [('email', 'mail', 'Enviar e-mail', aluno.email), ('whatsapp', 'whatsapp', 'Enviar WhatsApp', aluno.telefone), ('ambos', 'send', 'Enviar pelos dois', aluno.email or aluno.telefone)] %}
+    {% set pode_email = aluno.email and aluno.aceita_email %}{% set pode_wa = aluno.telefone and aluno.aceita_whatsapp %}
+    {% for canal, ic, rotulo, ok in [('email', 'mail', 'Enviar e-mail', pode_email), ('whatsapp', 'whatsapp', 'Enviar WhatsApp', pode_wa), ('ambos', 'send', 'Enviar pelos dois', pode_email or pode_wa)] %}
     <form method="post" action="{{ url_for('avisar_aluno', aluno_id=aluno.id) }}">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
       <input type="hidden" name="canal" value="{{ canal }}">
       <button class="btn {{ 'primario' if canal == 'ambos' }} {{ 'whats' if canal == 'whatsapp' }}" {{ 'disabled' if not ok }}>{{ icone(ic, 15) }} {{ rotulo }}</button>
     </form>
     {% endfor %}
-    {% if link_wa %}<a class="btn whats" href="{{ link_wa }}" target="_blank" rel="noopener">{{ icone('external', 15) }} Abrir no WhatsApp</a>{% endif %}
+    {% if link_wa and aluno.aceita_whatsapp %}<a class="btn whats" href="{{ link_wa }}" target="_blank" rel="noopener">{{ icone('external', 15) }} Abrir no WhatsApp</a>{% endif %}
     <a class="btn" href="{{ url_for('email_preview', aluno=aluno.id) }}" target="_blank">{{ icone('eye', 15) }} Ver e-mail</a>
   </div>
 </section>
@@ -98,7 +100,7 @@
     <div class="card-titulo"><span class="ico p g-teal">{{ icone('wallet', 17) }}</span><div><h2>Pagamentos</h2><p class="sub">{{ pagamentos|length }} registro(s)</p></div></div>
     <div class="tabela-wrap">
     <table>
-      <thead><tr><th>Data</th><th class="num">Valor</th><th>Forma</th><th>Validade</th><th></th></tr></thead>
+      <thead><tr><th>Data</th><th class="num">Valor</th><th>Forma</th><th>Validade</th><th><span class="sr-only">Ações</span></th></tr></thead>
       <tbody>
       {% for p in pagamentos %}
         <tr>
@@ -109,7 +111,7 @@
           <td class="num">
             <form method="post" action="{{ url_for('estornar_pagamento', pagamento_id=p.id) }}" onsubmit="return confirm('Estornar este pagamento?')">
               <input type="hidden" name="csrf" value="{{ csrf_token }}">
-              <button class="btn sm quadrado perigo" title="Estornar">{{ icone('refresh', 14) }}</button>
+              <button class="btn sm quadrado perigo" title="Estornar" aria-label="Estornar pagamento de {{ p.data_pagamento|data_br }}">{{ icone('refresh', 14) }}</button>
             </form>
           </td>
         </tr>
@@ -142,9 +144,26 @@
   </section>
 </div>
 
-<form method="post" action="{{ url_for('aluno_excluir', aluno_id=aluno.id) }}" style="margin-top:22px"
-      onsubmit="return confirm('Excluir DEFINITIVAMENTE este aluno e todo o histórico? Prefira cancelar a matrícula.')">
-  <input type="hidden" name="csrf" value="{{ csrf_token }}">
-  <button class="btn sm perigo">{{ icone('trash', 14) }} Excluir cadastro</button>
-</form>
+<section class="card" style="margin-top:18px">
+  <div class="card-titulo"><span class="ico p g-cinza">{{ icone('lock', 17) }}</span>
+    <div><h2>Dados pessoais (LGPD)</h2><p class="sub">use quando o aluno pedir acesso aos dados ou a exclusão deles</p></div></div>
+  {% if aluno.anonimizado_em %}
+    <p class="sub">{{ icone('check', 14) }} Dados pessoais apagados em {{ aluno.anonimizado_em[:10]|data_br }}. Ficaram só os valores pagos.</p>
+  {% else %}
+  <div class="linha-botoes" style="margin-top:0">
+    <a class="btn" href="{{ url_for('aluno_exportar', aluno_id=aluno.id) }}">{{ icone('receipt', 15) }} Exportar dados (arquivo)</a>
+    <form method="post" action="{{ url_for('aluno_anonimizar', aluno_id=aluno.id) }}"
+          onsubmit="return confirm('Apagar nome, CPF, e-mail, telefone e observações deste aluno? Os valores pagos ficam guardados, sem identificação. Não dá para desfazer.')">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn perigo">{{ icone('ban', 15) }} Apagar dados pessoais (anonimizar)</button>
+    </form>
+    <form method="post" action="{{ url_for('aluno_excluir', aluno_id=aluno.id) }}"
+          onsubmit="return confirm('Excluir DEFINITIVAMENTE este aluno, inclusive os pagamentos? Atenção: a lei fiscal pode exigir guardar os pagamentos. Prefira anonimizar.')">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn perigo">{{ icone('trash', 15) }} Excluir tudo</button>
+    </form>
+  </div>
+  <p class="sub" style="margin-top:12px">Anonimizar é o recomendado: apaga os dados pessoais e guarda só os valores pagos, que a legislação fiscal exige manter.</p>
+  {% endif %}
+</section>
 {% endblock %}

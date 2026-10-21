@@ -1,4 +1,4 @@
-"""Ícones SVG (traço, estilo Lucide) usados nas telas: {{ icone('users') }}."""
+"""Ícones SVG (traço) do projeto Lucide, licença ISC (ver LICENCAS_TERCEIROS.md): {{ icone("users") }}."""
 from markupsafe import Markup
 
 ICONES = {
