@@ -27,11 +27,13 @@
 <p align="center"><sub>Captura real do painel (modo claro), com alunos fictícios de demonstração.</sub></p>
 
 <p align="center">
-  <img src="docs/assets/dashboard-escuro.png" alt="Dashboard no modo escuro" width="62%">
+  <img src="docs/assets/dashboard-escuro.png" alt="Dashboard no modo escuro" width="50%">
   &nbsp;
-  <img src="docs/assets/celular.png" alt="Painel no celular com a barra de abas inferior" width="26%">
+  <img src="docs/assets/celular.png" alt="Painel no celular com a barra de abas flutuante e a aba atual em um círculo azul" width="21%">
+  &nbsp;
+  <img src="docs/assets/celular-menu.png" alt="Menu em tela cheia no celular, com busca, cartões de acesso rápido e listas" width="21%">
 </p>
-<p align="center"><sub>Modo escuro e versão para celular, com barra de abas inferior.</sub></p>
+<p align="center"><sub>Modo escuro e versão para celular: barra de abas flutuante e menu em tela cheia com busca.</sub></p>
 
 <table>
   <tr>
@@ -41,7 +43,7 @@
   </tr>
 </table>
 
-Visual no estilo Apple (fonte do sistema, botões em pílula, controles segmentados), com **modo escuro** e, no celular, **barra de abas inferior**.
+Visual no estilo Apple (fonte do sistema, botões em pílula, controles segmentados), com **modo escuro** e, no celular, **barra de abas flutuante** (a aba atual vira um círculo) com **menu em tela cheia**: busca, cartões de acesso rápido e listas por assunto.
 
 Feito em **Python + Flask**. No computador usa **SQLite** (não precisa instalar banco de dados); na nuvem
 (Vercel) usa **Postgres**. Roda em Windows, Mac ou Linux com Python 3.10 ou mais novo.

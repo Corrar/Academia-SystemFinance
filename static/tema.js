@@ -1,4 +1,4 @@
-// Modo claro/escuro e painel "Mais" da barra de abas (celular).
+// Modo claro/escuro e menu em tela cheia da barra de abas (celular).
 (function () {
   var raiz = document.documentElement;
   var escuroNoSistema = window.matchMedia("(prefers-color-scheme: dark)");
@@ -29,14 +29,44 @@
   escuroNoSistema.addEventListener("change", atualizarBotoes);
   atualizarBotoes();
 
-  // painel "Mais"
+  // menu em tela cheia
   var folha = document.getElementById("mais");
   if (folha && folha.showModal) {
+    var campo = folha.querySelector("[data-buscar-menu]");
     document.querySelectorAll("[data-abrir-mais]").forEach(function (b) {
-      b.addEventListener("click", function () { folha.showModal(); });
+      b.addEventListener("click", function () { folha.showModal(); folha.scrollTop = 0; });
     });
     folha.addEventListener("click", function (e) {
       if (e.target === folha || e.target.closest("[data-fechar]")) folha.close();
     });
+    folha.addEventListener("close", function () {
+      if (campo && campo.value) { campo.value = ""; filtrar(""); }
+    });
+
+    // busca: filtra os itens do menu e oferece procurar o termo nos inscritos
+    var semAcento = function (t) { return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); };
+    var buscaAluno = folha.querySelector("[data-busca-aluno]");
+    var vazio = folha.querySelector("[data-menu-vazio]");
+    function filtrar(termo) {
+      var t = semAcento(termo.trim());
+      var achou = 0;
+      folha.querySelectorAll(".menu-secao").forEach(function (secao) {
+        var visiveis = 0;
+        secao.querySelectorAll("[data-item]").forEach(function (item) {
+          var mostra = !t || semAcento(item.textContent).indexOf(t) !== -1;
+          item.hidden = !mostra;
+          if (mostra) visiveis++;
+        });
+        secao.hidden = visiveis === 0;
+        achou += visiveis;
+      });
+      if (buscaAluno) {
+        buscaAluno.hidden = !t;
+        buscaAluno.href = buscaAluno.href.split("?")[0] + "?q=" + encodeURIComponent(termo.trim());
+        buscaAluno.querySelector("[data-termo]").textContent = termo.trim();
+      }
+      if (vazio) vazio.hidden = !t || achou > 0;
+    }
+    if (campo) campo.addEventListener("input", function () { filtrar(campo.value); });
   }
 })();

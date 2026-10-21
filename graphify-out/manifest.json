@@ -48,9 +48,9 @@
     "semantic_hash": ""
   },
   "icones.py": {
-    "mtime": 1792548508.1484795,
-    "seen": 1792549325.195803,
-    "ast_hash": "11f0d13900cc5c8bc9a3101c6af3a40a",
+    "mtime": 1792549996.2477806,
+    "seen": 1792550200.087004,
+    "ast_hash": "a3d30257b68d8866ccf26c7e0671bc58",
     "semantic_hash": ""
   },
   "notificacoes.py": {
@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "static/tema.js": {
-    "mtime": 1792548508.1557684,
-    "seen": 1792549325.1958072,
-    "ast_hash": "4fa675d64c4c975de77a7b2c020bb301",
+    "mtime": 1792550052.2472296,
+    "seen": 1792550200.0870113,
+    "ast_hash": "5f6068fcedbe5c9298fc6e59308f92df",
     "semantic_hash": ""
   },
   "tests/conftest.py": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792548892.372219,
-    "seen": 1792549325.1958144,
-    "ast_hash": "fd4cfdafc5dbcdccb63a99df60270ca7",
+    "mtime": 1792550193.543814,
+    "seen": 1792550200.0870268,
+    "ast_hash": "b7e108ec5bf0c065f80c31363e06861b",
     "semantic_hash": ""
   },
   "docs/CONFORMIDADE.md": {
@@ -174,9 +174,9 @@
     "semantic_hash": ""
   },
   "templates/base.html": {
-    "mtime": 1792548687.5142481,
-    "seen": 1792549325.1958308,
-    "ast_hash": "9506172d73e7b69b48f8454b97891e5c",
+    "mtime": 1792550100.5584736,
+    "seen": 1792550200.0870547,
+    "ast_hash": "61512d1c13b4eeb0e0bf031422901339",
     "semantic_hash": ""
   },
   "templates/configuracoes.html": {
@@ -264,9 +264,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1792549388.0926766,
-    "seen": 1792549401.7184322,
-    "ast_hash": "029bcb0897a90e40bab0fdb7a0fe6b4a",
+    "mtime": 1792550193.5443792,
+    "seen": 1792550200.0870228,
+    "ast_hash": "49a6b7584a2350d24c5d739f8b9ab651",
     "semantic_hash": ""
   }
 }

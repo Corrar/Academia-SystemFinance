@@ -34,9 +34,9 @@ desenvolvimento e Postgres (Neon, via psycopg 3) em produção. Sem ORM: SQL esc
 | `ajustes.py` | Configurações editáveis na tela (tabela `sistema`), com fallback para variáveis de ambiente. Segredos nunca voltam para o formulário. |
 | `icones.py` | Ícones Lucide em SVG inline (`icone('nome', tamanho)`). |
 | `seed.py` | Popula 30 alunos fictícios para demonstração. |
-| `templates/` | `base.html` (cabeçalho, abas, barra inferior do celular e folha "Mais"), `_head.html`, `_componentes.html` e `legal/` (privacidade, termos, reembolso). |
+| `templates/` | `base.html` (cabeçalho, abas, barra de abas do celular e menu em tela cheia `#mais`), `_head.html`, `_componentes.html` e `legal/` (privacidade, termos, reembolso). |
 | `static/style.css` | Todo o visual, no estilo Apple. Tokens em `:root`. |
-| `static/tema.js` | Alterna claro/escuro (localStorage) e abre/fecha a folha "Mais". |
+| `static/tema.js` | Alterna claro/escuro (localStorage) abre/fecha o menu em tela cheia e filtra a busca do menu. |
 | `vercel.json` | Cron diário `0 12 * * *` (9h em Brasília) → `/api/cron/cobranca`. |
 | `docs/CONFORMIDADE.md` | O que foi feito para LGPD, acessibilidade e riscos jurídicos. |
 
@@ -86,7 +86,10 @@ Não rode `playwright install`.
   - fundo branco no modo claro e modo escuro completo;
   - fonte do sistema (SF Pro), com Inter local como alternativa;
   - botões em pílula, controles segmentados e switches no estilo iOS;
-  - abaixo de 760px, barra de abas inferior com 4 itens mais "Mais";
+  - abaixo de 760px, barra de abas flutuante (cantos de 34px) com Início, Inscritos, Validade,
+    Financeiro e Menu; a aba atual vira um círculo azul de 60px só com o ícone;
+  - "Menu" abre um `<dialog>` em tela cheia: botão fechar redondo, busca em pílula (filtra o menu
+    e oferece buscar nos inscritos), "Acesso rápido" em cartões 2×3 e listas com o ícone à direita;
   - a logo é só a escrita "Corpu's" (`static/logo-horizontal.svg`).
 - Cores novas viram tokens no `:root` e precisam ser redefinidas nos dois blocos do modo escuro
   (`[data-tema="escuro"]` e `prefers-color-scheme`). Contraste mínimo: WCAG AA. A auditoria com

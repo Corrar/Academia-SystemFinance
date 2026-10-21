@@ -49,28 +49,75 @@
 </main>
 {% include "_rodape.html" %}
 
-{# Barra de abas inferior (só aparece no celular) #}
-{% set no_mais = ep in ['avisos', 'planos', 'configuracoes'] %}
+{# Barra de abas inferior (só no celular): a aba atual vira um círculo preenchido #}
+{% set no_menu = ep in ['avisos', 'planos', 'configuracoes'] %}
 <nav class="barra-abas" aria-label="Menu">
   {% for destino, ic, rotulo, curto, ativo in menu[:4] %}
-    <a href="{{ url_for(destino) }}" class="{{ 'ativo' if ativo }}" {{ 'aria-current="page"'|safe if ativo }}>{{ icone('home' if destino == 'dashboard' else ic, 24) }}<span>{{ curto }}</span></a>
+    <a href="{{ url_for(destino) }}" class="{{ 'ativo' if ativo }}" {{ 'aria-current="page"'|safe if ativo }}>
+      <span class="aba-ic">{{ icone('home' if destino == 'dashboard' else ic, 24) }}</span><span class="aba-rotulo">{{ curto }}</span>
+    </a>
   {% endfor %}
-  <button type="button" class="{{ 'ativo' if no_mais }}" data-abrir-mais aria-haspopup="dialog" aria-controls="mais">{{ icone('mais', 24) }}<span>Mais</span></button>
+  <button type="button" class="{{ 'ativo' if no_menu }}" data-abrir-mais aria-haspopup="dialog" aria-controls="mais">
+    <span class="aba-ic">{{ icone('menu', 24) }}</span><span class="aba-rotulo">Menu</span>
+  </button>
 </nav>
 
-<dialog class="folha" id="mais" aria-label="Mais opções">
+{# Menu em tela cheia: busca, acesso rápido em cartões e listas por assunto #}
+{% macro linha(destino, ic, rotulo, ativo=false) -%}
+  <a class="menu-linha" data-item href="{{ destino }}" {{ 'aria-current="page"'|safe if ativo }}><span>{{ rotulo }}</span>{{ icone(ic, 24) }}</a>
+{%- endmacro %}
+<dialog class="folha" id="mais" aria-labelledby="mais-titulo">
+  <div class="folha-topo">
+    <h2 id="mais-titulo">Menu</h2>
+    <button type="button" class="folha-fechar" data-fechar aria-label="Fechar menu">{{ icone('x', 24) }}</button>
+  </div>
   <div class="folha-corpo">
-    <div class="grupo">
-      <div class="grupo-titulo">{{ usuario }} · Administrador</div>
-      {% for destino, ic, rotulo, curto, ativo in menu[4:] %}
-        <a href="{{ url_for(destino) }}" {{ 'aria-current="page"'|safe if ativo }}>{{ icone(ic, 20) }} {{ rotulo }}</a>
-      {% endfor %}
-    </div>
-    <div class="grupo">
-      <button type="button" data-alternar-tema><span class="lua">{{ icone('moon', 20) }}</span><span class="sol">{{ icone('sun', 20) }}</span><span data-rotulo-tema>Usar modo escuro</span></button>
-      <a class="perigo" href="{{ url_for('logout') }}">{{ icone('logout', 20) }} Sair</a>
-    </div>
-    <div class="grupo"><button type="button" class="cancelar" data-fechar>Cancelar</button></div>
+    <form class="menu-busca" role="search" method="get" action="{{ url_for('alunos') }}">
+      <label class="sr-only" for="menu-q">Buscar no menu ou um inscrito</label>
+      {{ icone('search', 22) }}
+      <input id="menu-q" name="q" type="search" placeholder="Buscar" autocomplete="off" data-buscar-menu>
+    </form>
+    <a class="menu-linha" href="{{ url_for('alunos') }}" data-busca-aluno hidden><span>Buscar “<b data-termo></b>” nos inscritos</span>{{ icone('users', 24) }}</a>
+
+    <section class="menu-secao" aria-labelledby="menu-rapido">
+      <h3 id="menu-rapido">Acesso rápido</h3>
+      <div class="menu-cartoes">
+        {% for destino, ic, rotulo in [
+          (url_for('aluno_novo'), 'user-plus', 'Novo aluno'),
+          (url_for('alunos'), 'users', 'Inscritos'),
+          (url_for('validade'), 'calendar', 'Validade'),
+          (url_for('financeiro'), 'wallet', 'Financeiro'),
+          (url_for('dashboard') ~ '#inadimplentes', 'alert', 'Inadimplentes'),
+          (url_for('avisos'), 'bell', 'Avisos enviados'),
+        ] %}
+          <a class="menu-cartao" data-item href="{{ destino }}">{{ icone(ic, 26) }}<span>{{ rotulo }}</span></a>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="menu-secao" aria-labelledby="menu-cobranca">
+      <h3 id="menu-cobranca">Cobrar e receber</h3>
+      {{ linha(url_for('avisos'), 'bell', 'Avisos de vencimento', ep == 'avisos') }}
+      {{ linha(url_for('planos'), 'tag', 'Planos e valores', ep == 'planos') }}
+      {{ linha(url_for('financeiro'), 'receipt', 'Pagamentos recebidos') }}
+      <form method="post" action="{{ url_for('executar_cobranca') }}" data-item
+            onsubmit="return confirm('Enviar agora os avisos de vencimento do dia?')">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <button class="menu-linha" type="submit"><span>Executar cobrança agora</span>{{ icone('send', 24) }}</button>
+      </form>
+    </section>
+
+    <section class="menu-secao" aria-labelledby="menu-conta">
+      <h3 id="menu-conta">Conta e sistema</h3>
+      {{ linha(url_for('configuracoes'), 'settings', 'Configurações', ep == 'configuracoes') }}
+      <button type="button" class="menu-linha" data-item data-alternar-tema>
+        <span data-rotulo-tema>Usar modo escuro</span><span class="lua">{{ icone('moon', 24) }}</span><span class="sol">{{ icone('sun', 24) }}</span>
+      </button>
+      {{ linha(url_for('privacidade'), 'file', 'Política de privacidade') }}
+      {{ linha(url_for('termos'), 'file', 'Termos de uso') }}
+      <a class="menu-linha perigo" data-item href="{{ url_for('logout') }}"><span>Sair</span>{{ icone('logout', 24) }}</a>
+    </section>
+    <p class="menu-vazio" data-menu-vazio hidden>Nada no menu com esse nome. Toque em Buscar para procurar nos inscritos.</p>
   </div>
 </dialog>
 </body>
