@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block titulo %}Integrações{% endblock %}
+{% block conteudo %}
+<div class="cabeca">
+  <div>
+    <h1>Integrações</h1>
+    <p class="sub">Tudo gratuito e sem cadastro em serviços pagos. Ligue o que facilitar o seu dia a dia.</p>
+  </div>
+</div>
+
+<div class="integracoes">
+  {# ---------------- PIX ---------------- #}
+  <section class="card integracao" id="pix">
+    <div class="integracao-topo">
+      <span class="ico g-verde">{{ icone('qr', 20) }}</span>
+      {% if tem_pix %}<span class="pill verde">{{ icone('check', 11) }} Ativo</span>{% else %}<span class="pill amarelo">{{ icone('alert', 11) }} Falta a chave PIX</span>{% endif %}
+    </div>
+    <h2>PIX copia e cola e QR Code</h2>
+    <p class="sub">Cada aviso já vai com o PIX no valor certo do aluno (padrão do Banco Central). Na ficha do aluno aparece o QR Code para pagar na recepção.</p>
+    {% if tem_pix %}
+      <div class="pix-mini">
+        <code class="pix-codigo" id="pix-exemplo" tabindex="0" aria-label="PIX copia e cola de exemplo">{{ pix_codigo }}</code>
+        <button type="button" class="btn sm" data-copiar="#pix-exemplo">{{ icone('copiar', 14) }} Copiar</button>
+      </div>
+      {% if not url_publica %}<p class="ajuda">Para o QR Code aparecer nos e-mails, preencha o “Endereço público do sistema” em Configurações.</p>{% endif %}
+    {% endif %}
+    <div class="linha-botoes"><a class="btn sm" href="{{ url_for('configuracoes') }}">{{ icone('settings', 14) }} {{ 'Chave e cidade do PIX' if tem_pix else 'Cadastrar a chave PIX' }}</a></div>
+  </section>
+
+  {# ---------------- Agenda ---------------- #}
+  <section class="card integracao" id="agenda">
+    <div class="integracao-topo"><span class="ico g-azul">{{ icone('agenda', 20) }}</span><span class="pill azul">Atualiza sozinha</span></div>
+    <h2>Vencimentos na sua agenda</h2>
+    <p class="sub">Assine este link no Google Agenda, no calendário do iPhone ou no Outlook: os vencimentos dos próximos 90 dias e os reajustes aparecem lá e se atualizam sozinhos.</p>
+    <label class="campo"><span class="rotulo-campo">Link privado da agenda</span>
+      <input id="link-agenda" value="{{ agenda }}" readonly></label>
+    <div class="linha-botoes">
+      <a class="btn sm primario" href="https://calendar.google.com/calendar/r?cid={{ agenda_webcal|urlencode }}" target="_blank" rel="noopener">{{ icone('agenda', 14) }} Google Agenda</a>
+      <a class="btn sm" href="{{ agenda_webcal }}">{{ icone('calendar', 14) }} iPhone / Outlook</a>
+      <button type="button" class="btn sm" data-copiar="#link-agenda">{{ icone('copiar', 14) }} Copiar link</button>
+    </div>
+    <form method="post" action="{{ url_for('agenda_novo_link') }}" data-titulo="Trocar o link da agenda?"
+          data-confirmar="O link atual para de funcionar. Use se ele foi compartilhado com quem não devia e assine o novo link." data-ok="Trocar link">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn sm fantasma">{{ icone('refresh', 14) }} Trocar o link</button>
+    </form>
+    <p class="ajuda">O link mostra nome, plano e telefone dos alunos: não compartilhe.</p>
+  </section>
+
+  {# ---------------- Resumo diário ---------------- #}
+  <section class="card integracao" id="resumo">
+    <div class="integracao-topo"><span class="ico g-violeta">{{ icone('mail-ok', 20) }}</span>
+      {% if resumo_ativo and email_automatico %}<span class="pill verde">{{ icone('check', 11) }} Ligado</span>{% else %}<span class="pill">Desligado</span>{% endif %}</div>
+    <h2>Resumo diário por e-mail</h2>
+    <p class="sub">Todo dia às 9h: quem vence hoje, inadimplentes, quanto entrou ontem e os avisos esperando você enviar.</p>
+    <form method="post" action="{{ url_for('resumo_salvar') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <label class="check"><input type="checkbox" name="resumo_ativo" value="1" {{ 'checked' if resumo_ativo }}> Receber o resumo diário</label>
+      <label class="campo" style="margin-top:12px"><span class="rotulo-campo">Enviar para</span>
+        <input type="email" name="resumo_email" value="{{ resumo_email }}" placeholder="voce@suaacademia.com.br"></label>
+      {% if not email_automatico %}
+      <p class="ajuda">{{ icone('info', 13) }} Precisa do envio automático de e-mail (Gmail/SMTP ou Resend) em <a href="{{ url_for('configuracoes') }}#envio">Configurações</a>.</p>
+      {% endif %}
+      <div class="linha-botoes">
+        <button class="btn sm primario">{{ icone('salvar', 14) }} Salvar</button>
+        <button class="btn sm" name="testar" value="1" {{ 'disabled' if not email_automatico }}>{{ icone('send', 14) }} Enviar teste</button>
+      </div>
+    </form>
+  </section>
+
+  {# ---------------- App ---------------- #}
+  <section class="card integracao" id="app">
+    <div class="integracao-topo"><span class="ico g-indigo">{{ icone('app', 20) }}</span><span class="pill azul">Celular e computador</span></div>
+    <h2>Instalar como aplicativo</h2>
+    <p class="sub">Coloque o painel na tela inicial: abre em tela cheia, como um app, com atalhos para Novo aluno e Fila de envio.</p>
+    <div class="linha-botoes" data-area-instalar hidden>
+      <button type="button" class="btn sm primario" data-instalar>{{ icone('baixar', 14) }} Instalar agora</button>
+    </div>
+    <ul class="passos-app">
+      <li><strong>iPhone (Safari):</strong> toque em Compartilhar e depois em “Adicionar à Tela de Início”.</li>
+      <li><strong>Android (Chrome):</strong> menu ⋮ e “Instalar app”.</li>
+      <li><strong>Computador (Chrome/Edge):</strong> ícone de instalar na barra de endereço.</li>
+    </ul>
+  </section>
+
+  {# ---------------- CNPJ / CEP ---------------- #}
+  <section class="card integracao" id="cnpj">
+    <div class="integracao-topo"><span class="ico g-teal">{{ icone('busca-ok', 20) }}</span><span class="pill verde">{{ icone('check', 11) }} Ativo</span></div>
+    <h2>Dados pelo CNPJ e pelo CEP</h2>
+    <p class="sub">Em Configurações, digite o CNPJ e o sistema preenche razão social, endereço, cidade e telefone (Receita Federal, pela BrasilAPI). O CEP completa o endereço.</p>
+    <div class="linha-botoes"><a class="btn sm" href="{{ url_for('configuracoes') }}#empresa">{{ icone('building', 14) }} Dados legais</a></div>
+  </section>
+
+  {# ---------------- Backup ---------------- #}
+  <section class="card integracao" id="backup">
+    <div class="integracao-topo"><span class="ico g-laranja">{{ icone('backup', 20) }}</span>
+      {% if ultimo_backup %}<span class="pill">último: {{ ultimo_backup[:10]|data_br }}</span>{% endif %}</div>
+    <h2>Backup completo</h2>
+    <p class="sub">Um arquivo com planos, alunos, pagamentos, avisos e reajustes (senhas e tokens ficam de fora). O banco na nuvem também guarda o histórico das últimas 24 horas.</p>
+    <div class="linha-botoes"><a class="btn sm primario" href="{{ url_for('backup_baixar') }}" download>{{ icone('baixar', 14) }} Baixar backup (.json)</a></div>
+    <p class="ajuda">Contém dados pessoais: guarde em local seguro.</p>
+  </section>
+
+  {# ---------------- GitHub ---------------- #}
+  <section class="card integracao integracao-larga" id="github">
+    <div class="integracao-topo"><span class="ico g-cinza">{{ icone('github', 20) }}</span><span class="pill verde">{{ icone('check', 11) }} Automático</span></div>
+    <h2>Automações no GitHub</h2>
+    <p class="sub">Rodam sozinhas no repositório, sem custo:</p>
+    <ul class="automacoes">
+      <li>{{ icone('check', 15) }}<span><strong>Testes</strong> a cada envio de código: nada quebrado chega ao ar sem aviso.</span></li>
+      <li>{{ icone('foguete', 15) }}<span><strong>Release automática</strong>: ao mudar a versão, a release com as novidades é publicada.</span></li>
+      <li>{{ icone('atividade', 15) }}<span><strong>Monitor</strong> de hora em hora: se o sistema sair do ar, abre um alerta (issue) e avisa por e-mail.</span></li>
+      <li>{{ icone('refresh', 15) }}<span><strong>Dependabot</strong>: propõe as atualizações de segurança das bibliotecas.</span></li>
+    </ul>
+    <div class="linha-botoes">
+      <a class="btn sm" href="https://github.com/Corrar/Academia-SystemFinance/actions" target="_blank" rel="noopener">{{ icone('atividade', 14) }} Ver execuções</a>
+      <a class="btn sm" href="https://github.com/Corrar/Academia-SystemFinance/releases" target="_blank" rel="noopener">{{ icone('foguete', 14) }} Releases</a>
+      <a class="btn sm fantasma" href="{{ url_for('api_saude') }}" target="_blank">{{ icone('atividade', 14) }} Saúde do sistema</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

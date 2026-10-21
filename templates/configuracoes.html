@@ -16,8 +16,9 @@
     <div class="card-titulo"><span class="ico p g-indigo">{{ icone('building', 17) }}</span><div><h2>Academia</h2><p class="sub">aparece nos e-mails e mensagens de WhatsApp</p></div></div>
     <div class="form-grid">
       <label class="campo"><span class="rotulo-campo">Nome da academia</span><input name="academia_nome" value="{{ v.academia_nome }}" required></label>
-      <label class="campo"><span class="rotulo-campo">Telefone para dúvidas</span><input name="academia_telefone" value="{{ v.academia_telefone }}" placeholder="(11) 99999-0000"></label>
-      <label class="campo"><span class="rotulo-campo">Chave PIX</span><input name="chave_pix" value="{{ v.chave_pix }}" placeholder="CNPJ, e-mail, telefone ou chave aleatória"></label>
+      <label class="campo"><span class="rotulo-campo">Telefone para dúvidas</span><input name="academia_telefone" value="{{ v.academia_telefone }}" data-preencher="academia_telefone" placeholder="(11) 99999-0000"></label>
+      <label class="campo"><span class="rotulo-campo">Chave PIX <span class="ajuda">· gera o PIX copia e cola e o QR Code</span></span><input name="chave_pix" value="{{ v.chave_pix }}" placeholder="CNPJ, e-mail, telefone ou chave aleatória"></label>
+      <label class="campo"><span class="rotulo-campo">Cidade do PIX <span class="ajuda">· aparece no app do banco</span></span><input name="pix_cidade" value="{{ v.pix_cidade }}" placeholder="São Paulo" data-preencher="pix_cidade"></label>
     </div>
   </section>
 
@@ -29,14 +30,27 @@
         {% if empresa.faltando %}<span class="pill amarelo">{{ icone('alert', 11) }} {{ empresa.faltando|length }} dado(s) faltando</span>{% else %}<span class="pill verde">{{ icone('check', 11) }} Completo</span>{% endif %}</p></div>
     </div>
     <div class="form-grid">
-      <label class="campo"><span class="rotulo-campo">Razão social</span><input name="razao_social" value="{{ v.razao_social }}" placeholder="Academia Exemplo Ltda." autocomplete="organization"></label>
-      <label class="campo"><span class="rotulo-campo">CNPJ</span><input name="cnpj" value="{{ v.cnpj }}" placeholder="00.000.000/0001-00"></label>
+      <label class="campo"><span class="rotulo-campo">Razão social</span><input name="razao_social" value="{{ v.razao_social }}" data-preencher="razao_social" placeholder="Academia Exemplo Ltda." autocomplete="organization"></label>
+      <div class="campo campo-duplo"><label class="rotulo-campo" for="cnpj">CNPJ</label>
+        <div class="campo-com-botao">
+          <input id="cnpj" name="cnpj" value="{{ v.cnpj }}" placeholder="00.000.000/0001-00" inputmode="numeric" data-preencher="cnpj">
+          <button type="button" class="btn" data-buscar-cnpj="{{ url_for('api_cnpj', cnpj='') }}" title="Preencher pelos dados da Receita Federal">{{ icone('busca-ok', 15) }} Buscar</button>
+        </div>
+        <span class="ajuda" data-resultado-cnpj aria-live="polite">preenche razão social, endereço, cidade e telefone</span>
+      </div>
       <label class="campo"><span class="rotulo-campo">E-mail de contato</span><input type="email" name="email_contato" value="{{ v.email_contato }}" placeholder="contato@suaacademia.com.br"></label>
-      <label class="campo largo"><span class="rotulo-campo">Endereço completo</span><input name="endereco" value="{{ v.endereco }}" placeholder="Rua, número, bairro, cidade/UF, CEP" autocomplete="street-address"></label>
+      <div class="campo largo"><label class="rotulo-campo" for="endereco">Endereço completo</label>
+        <div class="campo-com-botao">
+          <input id="endereco" name="endereco" value="{{ v.endereco }}" placeholder="Rua, número, bairro, cidade/UF, CEP" autocomplete="street-address" data-preencher="endereco">
+          <input id="cep" class="campo-cep" placeholder="CEP" inputmode="numeric" aria-label="CEP para completar o endereço" autocomplete="postal-code">
+          <button type="button" class="btn" data-buscar-cep="{{ url_for('api_cep', cep='') }}" title="Completar o endereço pelo CEP">{{ icone('local', 15) }} CEP</button>
+        </div>
+        <span class="ajuda" data-resultado-cep aria-live="polite"></span>
+      </div>
       <label class="campo"><span class="rotulo-campo">Encarregado de dados (DPO) <span class="ajuda">· pessoa que atende pedidos LGPD</span></span><input name="encarregado_nome" value="{{ v.encarregado_nome }}" placeholder="Nome do responsável"></label>
       <label class="campo"><span class="rotulo-campo">E-mail do encarregado</span><input type="email" name="encarregado_email" value="{{ v.encarregado_email }}" placeholder="privacidade@suaacademia.com.br"></label>
       <label class="campo"><span class="rotulo-campo">Endereço público do sistema <span class="ajuda">· para os links nos e-mails</span></span><input type="url" name="url_publica" value="{{ v.url_publica }}" placeholder="https://painel.suaacademia.com.br"></label>
-      <label class="campo"><span class="rotulo-campo">Cidade do foro <span class="ajuda">· opcional</span></span><input name="cidade_foro" value="{{ v.cidade_foro }}" placeholder="São Paulo/SP"></label>
+      <label class="campo"><span class="rotulo-campo">Cidade do foro <span class="ajuda">· opcional</span></span><input name="cidade_foro" value="{{ v.cidade_foro }}" data-preencher="cidade_foro" placeholder="São Paulo/SP"></label>
       <label class="campo"><span class="rotulo-campo">Multa no cancelamento de planos longos (%) <span class="ajuda">· 0 = sem multa</span></span><input name="retencao_cancelamento_pct" value="{{ v.retencao_cancelamento_pct }}" inputmode="decimal" placeholder="0"></label>
       <label class="campo"><span class="rotulo-campo">Prazo para reembolso (dias)</span><input name="prazo_reembolso_dias" value="{{ v.prazo_reembolso_dias }}" inputmode="numeric" placeholder="30"></label>
     </div>

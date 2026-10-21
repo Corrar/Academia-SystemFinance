@@ -6,6 +6,9 @@
 
 <p><a href="https://academia-systemfinance.vercel.app"><b>academia-systemfinance.vercel.app</b></a></p>
 
+<a href="https://github.com/Corrar/Academia-SystemFinance/releases/latest"><img alt="Versão" src="https://img.shields.io/github/v/release/Corrar/Academia-SystemFinance?label=vers%C3%A3o&color=0071e3"></a>
+<a href="https://github.com/Corrar/Academia-SystemFinance/actions/workflows/testes.yml"><img alt="Testes" src="https://github.com/Corrar/Academia-SystemFinance/actions/workflows/testes.yml/badge.svg"></a>
+<a href="https://github.com/Corrar/Academia-SystemFinance/actions/workflows/monitor.yml"><img alt="Monitor" src="https://github.com/Corrar/Academia-SystemFinance/actions/workflows/monitor.yml/badge.svg"></a>
 <a href="#pré-visualização"><img alt="status: em produção" src="https://img.shields.io/badge/status-em%20produ%C3%A7%C3%A3o-34c759"></a>
 <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776ab?logo=python&logoColor=white">
 <img alt="Flask 3" src="https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white">
@@ -102,6 +105,32 @@ dias definidos em `DIAS_AVISO` (padrão `-3,0,3,10`):
 
 Cada aviso é enviado **uma única vez** por vencimento, mesmo que a rotina rode várias vezes.
 Quando o pagamento é registrado, a validade é renovada e os avisos param.
+
+## Integrações gratuitas
+
+Tudo na página **Integrações** do painel, sem contratar nada:
+
+| Integração | O que faz |
+|---|---|
+| **PIX copia e cola + QR Code** | Gera o código no padrão BR Code do Banco Central com a chave da academia e o **valor de cada aluno** (já com reajuste agendado). Vai no aviso de WhatsApp, no e-mail (com imagem do QR) e aparece na ficha do aluno para pagar na recepção. Basta cadastrar a chave PIX (e a cidade) em Configurações |
+| **Agenda** | Link iCal privado com os vencimentos dos próximos 90 dias e os reajustes, para assinar no Google Agenda, no calendário do iPhone ou no Outlook. Atualiza sozinho e o link pode ser trocado a qualquer momento |
+| **CNPJ e CEP** | Em Configurações, o CNPJ preenche razão social, endereço, cidade e telefone (Receita Federal, via [BrasilAPI](https://brasilapi.com.br)); o CEP completa o endereço |
+| **App instalável (PWA)** | "Adicionar à tela de início" no celular e instalar no computador, com atalhos para Novo aluno e Fila de envio. Sem internet, mostra um aviso (dados dos alunos nunca ficam guardados no aparelho) |
+| **Resumo diário por e-mail** | Às 9h: quem vence hoje, inadimplentes, quanto entrou ontem, avisos na fila e reajustes. Precisa do envio automático de e-mail (Gmail/SMTP ou Resend) |
+| **Backup** | Baixa um arquivo `.json` com planos, alunos, pagamentos, avisos e reajustes (sem senhas e tokens) |
+| **GitHub Actions** | **Testes** a cada envio de código, **release automática** a cada versão nova, **monitor** de hora em hora que abre uma issue se o sistema cair (e fecha quando voltar) e **Dependabot** para atualizações de segurança |
+
+Endpoints públicos (sem dados pessoais): `/api/saude` (usado pelo monitor) e `/api/versao`.
+
+## Versões e releases
+
+- A versão atual fica no arquivo [`VERSION`](VERSION) e aparece no sistema (sidebar, login e rodapé). A página **Novidades**
+  mostra o histórico, lido do [`CHANGELOG.md`](CHANGELOG.md).
+- Para lançar uma versão: mude o `VERSION` (ex.: `1.9.0` → `1.10.0`), adicione a seção `## [1.10.0] - AAAA-MM-DD · Título`
+  no topo do `CHANGELOG.md` e envie para a `main`. O workflow **Release** cria a tag `v1.10.0` e a
+  [release no GitHub](https://github.com/Corrar/Academia-SystemFinance/releases) com as notas da seção; a Vercel publica o site.
+- Numeração [semântica](https://semver.org/lang/pt-BR/): `MAIOR` quando algo muda de forma incompatível, `MENOR` para
+  funcionalidades novas, `CORREÇÃO` para ajustes.
 
 ## Instalação no computador
 
@@ -239,6 +268,11 @@ academia-systemfinance/
 ├── ajustes.py        # configurações editáveis pela tela (sobrepõem o .env)
 ├── icones.py         # ícones Lucide (gerados do pacote oficial lucide-static)
 ├── importacao.py     # cadastro rápido: lê planilhas/colagem, reconhece datas e planos, valida e evita duplicados
+├── pix.py            # PIX copia e cola e QR Code (BR Code do Banco Central)
+├── integracoes.py    # agenda iCal, CNPJ/CEP (BrasilAPI), resumo diário e backup
+├── versao.py         # versão (VERSION) e novidades (CHANGELOG.md); usado também pelo workflow de release
+├── VERSION · CHANGELOG.md
+├── .github/          # workflows: testes, release, monitor; dependabot
 ├── cobranca.py       # rotina diária de cobrança automática
 ├── config.py         # leitura do .env
 ├── seed.py           # dados de exemplo (fictícios)

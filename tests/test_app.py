@@ -11,7 +11,7 @@ PAGINAS = ["/", "/alunos", "/alunos?status=inadimplente", "/alunos/3", "/alunos/
            "/validade?q=a", "/financeiro", "/avisos", "/planos", "/configuracoes", "/configuracoes/email-preview?aluno=3",
            "/alunos?plano=1&contato=whatsapp&ordem=vencimento&de=2026-01-01", "/alunos/cadastro-rapido",
            "/alunos/cadastro-rapido?aba=colar", "/alunos/cadastro-rapido?aba=arquivo", "/avisos/fila",
-           "/avisos?canal=whatsapp&status=pendente&tipo=atraso", "/reajustes"]
+           "/avisos?canal=whatsapp&status=pendente&tipo=atraso", "/reajustes", "/novidades", "/integracoes"]
 
 
 @pytest.mark.parametrize("url", ["/privacidade", "/termos", "/reembolso"])
@@ -240,3 +240,115 @@ def test_reajuste_exige_vigencia_futura(logado):
     logado.post("/reajustes", data={"csrf": csrf(logado), f"plano_{plano['id']}": "1", f"valor_{plano['id']}": "999",
                                     "vigencia": db.hoje().isoformat(), "canal_email": "1"})
     assert not [x for x in db.reajustes_agendados() if x["valor_novo"] == 999]
+
+
+# ---------------------------------------------------------------- versão, saúde e app
+
+def test_versao_e_saude_publicas(cliente):
+    import versao
+    r = cliente.get("/api/versao")
+    assert r.status_code == 200 and r.get_json()["versao"] == versao.VERSAO
+    r = cliente.get("/api/saude")
+    assert r.get_json() == {"ok": True, "banco": "ok", "versao": versao.VERSAO}
+    assert "Set-Cookie" not in r.headers
+    assert versao.secao(versao.VERSAO), "a versão do arquivo VERSION precisa de uma seção no CHANGELOG.md"
+    assert versao.historico()[0]["versao"] == versao.VERSAO
+
+
+def test_versao_aparece_no_painel_e_novidades(logado):
+    import versao
+    assert f"v{versao.VERSAO}" in logado.get("/").get_data(as_text=True)
+    html = logado.get("/novidades").get_data(as_text=True)
+    assert "Versão atual" in html and "<strong>PIX copia e cola" in html
+
+
+def test_app_instalavel(cliente):
+    m = cliente.get("/manifest.webmanifest")
+    assert m.status_code == 200 and m.get_json()["display"] == "standalone"
+    sw = cliente.get("/sw.js")
+    assert sw.status_code == 200 and "__VERSAO__" not in sw.get_data(as_text=True)
+    assert cliente.get("/offline").status_code == 200
+
+
+# ---------------------------------------------------------------- PIX
+
+def test_pix_copia_e_cola_valido():
+    import pix
+    assert pix.crc16("123456789") == "29B1"  # valor de referência do CRC-16/CCITT-FALSE
+    assert pix.normalizar_chave("(11) 98888-7777") == "+5511988887777"
+    assert pix.normalizar_chave("529.982.247-25") == "52998224725"
+    assert pix.normalizar_chave("12.345.678/0001-95") == "12345678000195"
+    codigo = pix.codigo(135.5, "MENSALIDADE", chave="Pix@Academia.com")
+    assert codigo.startswith("000201") and "br.gov.bcb.pix" in codigo and "pix@academia.com" in codigo
+    assert "5406135.50" in codigo and "5802BR" in codigo
+    assert pix.crc16(codigo[:-4]) == codigo[-4:]
+    assert pix.qr_png(codigo)[:4] == b"\x89PNG"
+
+
+def test_pix_nos_avisos_e_na_ficha(logado):
+    import ajustes
+    ajustes.salvar({"chave_pix": "pix@academia.com", "pix_cidade": "São Paulo"})
+    aluno = db.inadimplentes()[0]
+    _, texto = notificacoes.montar_mensagem(aluno)
+    assert "PIX copia e cola" in texto and "br.gov.bcb.pix" in texto
+    html = logado.get(f"/alunos/{aluno['id']}").get_data(as_text=True)
+    assert "Receber por PIX" in html and "<svg" in html
+    r = logado.get("/pix/qr/12000.png")
+    assert r.status_code == 200 and r.mimetype == "image/png"
+    assert logado.get("/pix/qr/0.png").status_code == 404
+
+
+# ---------------------------------------------------------------- agenda, backup, CNPJ e resumo
+
+def test_agenda_ical_com_token(logado, cliente):
+    import integracoes
+    token = integracoes.agenda_token()
+    assert cliente.get("/agenda/errado.ics").status_code == 404
+    r = cliente.get(f"/agenda/{token}.ics")
+    texto = r.get_data(as_text=True)
+    assert r.mimetype == "text/calendar" and texto.startswith("BEGIN:VCALENDAR") and "Vence:" in texto
+    assert all(len(l.encode()) <= 75 for l in texto.split("\r\n"))
+    novo = integracoes.agenda_token(novo=True)
+    assert cliente.get(f"/agenda/{token}.ics").status_code == 404 and cliente.get(f"/agenda/{novo}.ics").status_code == 200
+
+
+def test_backup_sem_segredos(logado):
+    import ajustes
+    ajustes.salvar({"smtp_senha": "segredo-que-nao-pode-sair"})
+    r = logado.get("/integracoes/backup.json")
+    texto = r.get_data(as_text=True)
+    dados = json.loads(texto)
+    assert {"alunos", "pagamentos", "planos", "notificacoes", "reajustes"} <= set(dados["tabelas"])
+    assert "segredo-que-nao-pode-sair" not in texto and "secret_key" not in dados["tabelas"]["ajustes"]
+
+
+def test_cnpj_pela_brasilapi(logado, monkeypatch):
+    import integracoes
+
+    class Resposta:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self):
+            return {"razao_social": "ACADEMIA CORPUS LTDA", "descricao_tipo_de_logradouro": "RUA", "logradouro": "DAS FLORES",
+                    "numero": "120", "complemento": "", "bairro": "CENTRO", "municipio": "SAO PAULO", "uf": "SP",
+                    "cep": "01001000", "ddd_telefone_1": "1140000000", "descricao_situacao_cadastral": "ATIVA"}
+    monkeypatch.setattr(integracoes.requests, "get", lambda *a, **k: Resposta())
+    d = logado.get("/api/cnpj/12345678000195").get_json()
+    assert d["razao_social"] == "Academia Corpus Ltda." and d["cidade_foro"] == "Sao Paulo/SP"
+    assert d["endereco"].startswith("Rua das Flores, 120 – Centro") and d["academia_telefone"] == "(11) 4000-0000"
+    assert logado.get("/api/cnpj/123").status_code == 400
+
+
+def test_resumo_diario_so_com_email_automatico(monkeypatch):
+    import ajustes
+    import integracoes
+    ajustes.salvar({"resumo_ativo": "1", "resumo_email": "dono@academia.com", "email_provedor": "manual"})
+    assert integracoes.enviar_resumo() == "precisa de envio automático de e-mail"
+    enviados = []
+    monkeypatch.setattr(notificacoes, "enviar_email", lambda *a, **k: enviados.append(a) or "enviado")
+    ajustes.salvar({"email_provedor": "smtp", "smtp_host": "smtp.exemplo.com"})
+    db.set_sistema("resumo_enviado_em", "")
+    assert integracoes.enviar_resumo() == "enviado"
+    assert enviados[0][0] == "dono@academia.com" and "Inadimplentes" in enviados[0][2]
+    assert integracoes.enviar_resumo() == "já enviado hoje"
+    ajustes.salvar({"email_provedor": "manual", "smtp_host": "", "resumo_ativo": "0"})

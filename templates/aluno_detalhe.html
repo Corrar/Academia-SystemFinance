@@ -102,6 +102,17 @@
         Enviar comprovante ao aluno {% if envio_modos.whatsapp == 'manual' %}<span class="ajuda">· fica pronto para você enviar pelo WhatsApp</span>{% endif %}</label>
       <div class="linha-botoes"><button class="btn primario">{{ icone('check', 15) }} Confirmar pagamento</button></div>
     </form>
+    {% if pix_codigo %}
+    <div class="pix-receber">
+      <div class="pix-qr" role="img" aria-label="QR Code PIX de {{ valor_sugerido|moeda }}">{{ pix_svg|safe }}</div>
+      <div class="pix-info">
+        <strong>{{ icone('qr', 15) }} Receber por PIX · {{ valor_sugerido|moeda }}</strong>
+        <p class="sub">O aluno lê o QR com o app do banco ou cola o código abaixo. Depois, confirme o pagamento acima.</p>
+        <code class="pix-codigo" id="pix-aluno" tabindex="0" aria-label="PIX copia e cola">{{ pix_codigo }}</code>
+        <button type="button" class="btn sm" data-copiar="#pix-aluno">{{ icone('copiar', 14) }} Copiar PIX copia e cola</button>
+      </div>
+    </div>
+    {% endif %}
   </section>
 </div>
 

@@ -36,6 +36,9 @@ desenvolvimento e Postgres (Neon, via psycopg 3) em produção. Sem ORM: SQL esc
 | `ajustes.py` | Configurações editáveis na tela (tabela `sistema`), com fallback para variáveis de ambiente. Segredos nunca voltam para o formulário. |
 | `icones.py` | Ícones Lucide em SVG inline (`icone('nome', tamanho)`). |
 | `importacao.py` | Cadastro rápido: lê texto colado do Excel, CSV e XLSX (`openpyxl`), reconhece cabeçalhos, datas BR/ISO/série do Excel e planos (nome ou valor); `validar()` aponta erros por ficha e duplicados (telefone/e-mail/CPF). |
+| `pix.py` | PIX copia e cola (BR Code EMV, CRC16) e QR em SVG/PNG (`segno`); `normalizar_chave` (CPF válido, CNPJ, +55 telefone, e-mail, EVP). |
+| `integracoes.py` | Agenda iCal (`gerar_ics`, token em `sistema.agenda_token`), CNPJ/CEP pela BrasilAPI, resumo diário (`enviar_resumo`, 1x por dia) e `backup()` sem segredos. |
+| `versao.py` | `VERSAO` (arquivo `VERSION`), `COMMIT` (`VERCEL_GIT_COMMIT_SHA`), `historico()` do `CHANGELOG.md`; CLI `python versao.py notas X` usada no workflow. |
 | `seed.py` | Popula 30 alunos fictícios para demonstração. |
 | `templates/` | `base.html` (sidebar do desktop, cabeçalho e barra de abas do celular, menu em tela cheia `#mais`, AlertDialog), `alunos_lote.html` (cadastro rápido), `fila.html`, `reajustes.html`, `email_mensagem.html` (e-mail genérico), `_head.html`, `_componentes.html` e `legal/`. |
 | `static/style.css` | Todo o visual: tokens e receitas do shadcn/ui em CSS puro, animações e View Transitions. |
@@ -69,8 +72,21 @@ Tabelas: `planos`, `alunos`, `pagamentos`, `notificacoes` (com `assunto`), `reaj
   - o aceite dos termos fica gravado em `termos_aceitos_em`;
   - a ficha do aluno permite exportar (JSON) e anonimizar;
   - avisos com mais de `RETENCAO_AVISOS_DIAS` (365) são apagados.
+- Rotas públicas (sem login, em `PUBLICAS`): documentos, `/api/saude`, `/api/versao`, `/agenda/<token>.ics`,
+  `/pix/qr/<centavos>.png` (só gera QR da chave da própria academia), `/manifest.webmanifest`, `/sw.js`, `/offline`.
+  O service worker guarda só `/static` e `/offline`; páginas com dados nunca vão para o cache.
 - Único cookie: o de sessão (essencial), por isso não há banner de cookies. Não adicionar Google
   Analytics nem scripts de terceiros sem atualizar a política de privacidade.
+
+## Versões e releases
+
+- Toda entrega para o usuário sobe a versão: edite `VERSION` e adicione no topo do `CHANGELOG.md` a seção
+  `## [X.Y.Z] - AAAA-MM-DD · Título` com itens `- **destaque**: texto`. O teste `test_versao_e_saude_publicas`
+  falha se a versão não tiver seção. Ao chegar na `main`, `.github/workflows/release.yml` cria a tag e a release.
+- A API de Actions não é acessível desta sessão (proxy); releases e tags podem ser lidas/criadas por
+  `gh api repos/Corrar/Academia-SystemFinance/releases` (só REST; GraphQL é bloqueado).
+- Workflows: `testes.yml` (pyflakes + pytest), `release.yml`, `monitor.yml` (de hora em hora em `/api/saude`;
+  abre/fecha issue `fora-do-ar`) e `dependabot.yml`.
 
 ## Comandos
 

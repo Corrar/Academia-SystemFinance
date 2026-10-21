@@ -3,11 +3,13 @@ import csv
 import io
 import json
 import os
+import re
 import secrets
 from datetime import date, datetime, timedelta
 from functools import wraps
 
 from flask import Flask, Response, abort, flash, jsonify, redirect, render_template, request, session, url_for
+from markupsafe import Markup
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import ajustes
@@ -15,7 +17,10 @@ import cobranca
 import config
 import db
 import importacao
+import integracoes
 import notificacoes
+import pix
+import versao
 from icones import icone
 from notificacoes import data_br, moeda
 
@@ -37,6 +42,14 @@ app.jinja_env.filters["moeda_inteira"] = lambda v: moeda(round(v or 0))[:-3]
 MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 app.jinja_env.globals["icone"] = icone
 app.jinja_env.globals["link_envio"] = notificacoes.link_envio
+
+
+def _md_simples(texto: str) -> Markup:
+    """**negrito** do CHANGELOG em <strong>, com o resto escapado."""
+    return Markup(re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", str(Markup.escape(texto))))
+
+
+app.jinja_env.filters["md_simples"] = _md_simples
 app.jinja_env.filters["mes_curto"] = lambda ym: f"{MESES[int(ym[5:7]) - 1]}/{ym[2:4]}"
 
 STATUS_ROTULO = {
@@ -74,6 +87,8 @@ def contexto_global():
         "hoje": db.hoje(),
         # contadores da sidebar e do menu (só no painel)
         "fila_total": db.contar_fila() if session.get("logado") else 0,
+        "VERSAO": versao.VERSAO,
+        "COMMIT": versao.COMMIT,
         "envio_modos": _modos_envio() if session.get("logado") else {},
     }
 
@@ -99,7 +114,8 @@ def proteger_csrf():
 
 
 # Páginas abertas ao público (sem login): documentos legais
-PUBLICAS = {"login", "static", "privacidade", "termos", "reembolso", "cron_cobranca"}
+PUBLICAS = {"login", "static", "privacidade", "termos", "reembolso", "cron_cobranca", "api_saude", "api_versao",
+            "agenda_ics", "pix_qr", "manifesto", "service_worker", "offline"}
 
 CSP = ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
        "script-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; "
@@ -467,6 +483,8 @@ def aluno_detalhe(aluno_id):
         fila=db.fila_envio(aluno_id),
         link_wa=notificacoes.link_whatsapp(aluno),
         preview=notificacoes.montar_mensagem(aluno)[1],
+        pix_codigo=(codigo := pix.codigo(notificacoes.valor_cobranca(aluno), "MENSALIDADE")),
+        pix_svg=pix.qr_svg(codigo) if codigo else "",
         formas=FORMAS_PAGAMENTO,
     )
 
@@ -988,6 +1006,168 @@ def teste_whatsapp():
 def email_preview():
     aluno = db.obter_aluno(int(request.args["aluno"])) if request.args.get("aluno") else _aluno_exemplo()
     return notificacoes.montar_email_html(aluno or abort(404))
+
+
+# ---------------------------------------------------------------- versão, saúde e novidades
+
+@app.route("/api/versao")
+def api_versao():
+    return jsonify({"versao": versao.VERSAO, "commit": versao.COMMIT or None})
+
+
+@app.route("/api/saude")
+def api_saude():
+    """Usado pelo monitor do GitHub Actions: 200 se o sistema e o banco respondem."""
+    try:
+        with db.conectar() as con:
+            con.execute("SELECT 1").fetchone()
+        banco = "ok"
+    except Exception:  # noqa: BLE001 - qualquer falha do banco vira 503
+        banco = "erro"
+    return jsonify({"ok": banco == "ok", "banco": banco, "versao": versao.VERSAO}), 200 if banco == "ok" else 503
+
+
+@app.route("/novidades")
+@login_obrigatorio
+def novidades():
+    return render_template("novidades.html", historico=versao.historico())
+
+
+# ---------------------------------------------------------------- integrações
+
+def _url_publica() -> str:
+    return ajustes.empresa()["url_publica"] or request.url_root.rstrip("/")
+
+
+@app.route("/integracoes")
+@login_obrigatorio
+def integracoes_pagina():
+    agenda = f"{_url_publica()}{url_for('agenda_ics', token=integracoes.agenda_token())}"
+    return render_template(
+        "integracoes.html", agenda=agenda, agenda_webcal="webcal://" + agenda.split("://", 1)[1],
+        resumo_ativo=ajustes.obter("resumo_ativo") == "1",
+        resumo_email=ajustes.obter("resumo_email") or ajustes.obter("email_contato"),
+        email_automatico=ajustes.provedor_email() in ("smtp", "resend"),
+        pix_codigo=pix.codigo(None, "MENSALIDADE"), tem_pix=bool(ajustes.obter("chave_pix")),
+        url_publica=ajustes.empresa()["url_publica"], ultimo_backup=db.get_sistema("ultimo_backup_em"),
+    )
+
+
+@app.post("/integracoes/agenda/novo-link")
+@login_obrigatorio
+def agenda_novo_link():
+    integracoes.agenda_token(novo=True)
+    flash("Link da agenda trocado. O link antigo parou de funcionar: assine o novo no seu calendário.", "ok")
+    return redirect(url_for("integracoes_pagina") + "#agenda")
+
+
+@app.route("/agenda/<token>.ics")
+def agenda_ics(token):
+    esperado = db.get_sistema("agenda_token") or ""
+    if not esperado or not secrets.compare_digest(token, esperado):
+        abort(404)
+    return Response(integracoes.gerar_ics(), mimetype="text/calendar; charset=utf-8",
+                    headers={"Content-Disposition": "inline; filename=vencimentos.ics", "Cache-Control": "private, max-age=900"})
+
+
+@app.post("/integracoes/resumo")
+@login_obrigatorio
+def resumo_salvar():
+    destino = request.form.get("resumo_email", "").strip()
+    if destino and "@" not in destino:
+        flash("Informe um e-mail válido para o resumo.", "erro")
+        return redirect(url_for("integracoes_pagina") + "#resumo")
+    ajustes.salvar({"resumo_ativo": "1" if request.form.get("resumo_ativo") else "0", "resumo_email": destino})
+    if request.form.get("testar"):
+        try:
+            status = integracoes.enviar_resumo(forcar=True)
+        except Exception as e:  # noqa: BLE001 - mostra o erro do servidor de e-mail
+            status = f"erro: {e}"
+        ok = status == "enviado"
+        flash(f"Resumo de teste enviado para {destino}." if ok else f"Resumo não enviado: {status}.", "ok" if ok else "erro")
+    else:
+        flash("Resumo diário salvo.", "ok")
+    return redirect(url_for("integracoes_pagina") + "#resumo")
+
+
+@app.route("/integracoes/backup.json")
+@login_obrigatorio
+def backup_baixar():
+    nome = f"backup-academia-{db.hoje().isoformat()}.json"
+    db.set_sistema("ultimo_backup_em", datetime.now().isoformat(timespec="seconds"))
+    return Response(integracoes.backup(), mimetype="application/json; charset=utf-8",
+                    headers={"Content-Disposition": f"attachment; filename={nome}"})
+
+
+@app.route("/api/cnpj/<cnpj>")
+@login_obrigatorio
+def api_cnpj(cnpj):
+    try:
+        return jsonify(integracoes.buscar_cnpj(cnpj))
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    except LookupError:
+        return jsonify({"erro": "CNPJ não encontrado na Receita Federal."}), 404
+    except Exception:  # noqa: BLE001 - BrasilAPI fora do ar
+        return jsonify({"erro": "Não foi possível consultar agora. Tente de novo em instantes."}), 502
+
+
+@app.route("/api/cep/<cep>")
+@login_obrigatorio
+def api_cep(cep):
+    try:
+        return jsonify(integracoes.buscar_cep(cep))
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    except LookupError:
+        return jsonify({"erro": "CEP não encontrado."}), 404
+    except Exception:  # noqa: BLE001
+        return jsonify({"erro": "Não foi possível consultar agora. Tente de novo em instantes."}), 502
+
+
+@app.route("/pix/qr/<int:centavos>.png")
+def pix_qr(centavos):
+    """QR Code PIX com o valor (usado na imagem do e-mail). Só gera para a chave da própria academia."""
+    if not 1 <= centavos <= 10_000_000:
+        abort(404)
+    codigo = pix.codigo(centavos / 100, "MENSALIDADE")
+    if not codigo:
+        abort(404)
+    return Response(pix.qr_png(codigo), mimetype="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+# ---------------------------------------------------------------- instalar como app (PWA)
+
+@app.route("/manifest.webmanifest")
+def manifesto():
+    nome = ajustes.obter("academia_nome")
+    dados = {
+        "name": f"{nome} · Cobrança", "short_name": nome.split()[0], "lang": "pt-BR",
+        "start_url": "/", "scope": "/", "display": "standalone", "background_color": "#ffffff", "theme_color": "#ffffff",
+        "description": "Mensalistas, validade, cobrança e avisos por e-mail e WhatsApp.",
+        "icons": [
+            {"src": url_for("static", filename="icone-192.png"), "sizes": "192x192", "type": "image/png"},
+            {"src": url_for("static", filename="icone-512.png"), "sizes": "512x512", "type": "image/png"},
+            {"src": url_for("static", filename="icone-maskable.png"), "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
+        "shortcuts": [
+            {"name": "Novo aluno", "url": "/alunos/novo"},
+            {"name": "Fila de envio", "url": "/avisos/fila"},
+            {"name": "Inscritos", "url": "/alunos"},
+        ],
+    }
+    return Response(json.dumps(dados, ensure_ascii=False), mimetype="application/manifest+json")
+
+
+@app.route("/sw.js")
+def service_worker():
+    codigo = (config.BASE_DIR / "static" / "sw.js").read_text(encoding="utf-8").replace("__VERSAO__", versao.VERSAO)
+    return Response(codigo, mimetype="text/javascript", headers={"Cache-Control": "no-cache"})
+
+
+@app.route("/offline")
+def offline():
+    return render_template("offline.html")
 
 
 # ---------------------------------------------------------------- inicialização

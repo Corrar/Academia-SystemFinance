@@ -78,6 +78,7 @@
   </div>
 
   <div class="lateral-grupo lateral-rodape">
+    {{ item(url_for('integracoes_pagina'), 'integracoes', 'Integrações', ep == 'integracoes_pagina') }}
     {{ item(url_for('configuracoes'), 'settings', 'Configurações', ep == 'configuracoes') }}
     <button type="button" class="lateral-item" data-alternar-tema title="Alternar modo claro ou escuro">
       <span class="lua">{{ icone('moon', 18) }}</span><span class="sol">{{ icone('sun', 18) }}</span><span class="texto" data-rotulo-tema>Modo escuro</span>
@@ -93,9 +94,13 @@
     </summary>
     <div class="usuario-menu">
       <a href="{{ url_for('configuracoes') }}">{{ icone('settings', 16) }} Configurações</a>
+      <a href="{{ url_for('novidades') }}">{{ icone('brilho', 16) }} Novidades da versão {{ VERSAO }}</a>
       <a class="perigo" href="{{ url_for('logout') }}">{{ icone('logout', 16) }} Sair</a>
     </div>
   </details>
+  <a class="lateral-versao" href="{{ url_for('novidades') }}" title="Novidades da versão {{ VERSAO }}" data-versao="{{ VERSAO }}">
+    <span class="texto">Versão</span> v{{ VERSAO }}<span class="ponto-novo" aria-hidden="true"></span><span class="sr-only"> – ver novidades</span>
+  </a>
 </aside>
 
 {# Cabeçalho do celular (no desktop a navegação fica na sidebar) #}
@@ -195,6 +200,8 @@
       <h3 id="menu-conta">Conta e sistema</h3>
       {{ linha(url_for('configuracoes'), 'settings', 'Configurações', ep == 'configuracoes') }}
       {{ linha(url_for('alunos_lote'), 'prancheta', 'Cadastro rápido (fichas em papel)', ep == 'alunos_lote') }}
+      {{ linha(url_for('integracoes_pagina'), 'integracoes', 'Integrações (agenda, PIX, app, backup)', ep == 'integracoes_pagina') }}
+      {{ linha(url_for('novidades'), 'brilho', 'Novidades · versão ' ~ VERSAO, ep == 'novidades') }}
       <button type="button" class="menu-linha" data-item data-alternar-tema>
         <span data-rotulo-tema>Usar modo escuro</span><span class="lua">{{ icone('moon', 24) }}</span><span class="sol">{{ icone('sun', 24) }}</span>
       </button>

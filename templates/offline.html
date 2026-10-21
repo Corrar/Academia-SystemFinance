@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+{% include "_head.html" %}
+  <meta name="robots" content="noindex, nofollow">
+  <title>Sem internet · {{ academia }}</title>
+</head>
+<body>
+<main class="login-pg">
+  <div class="login-box" style="text-align:center">
+    <img class="logo-login" src="{{ url_for('static', filename='logo-horizontal.svg') }}" alt="{{ academia }}" width="230" height="64">
+    <div class="card">
+      <h1 style="font-size:24px">Sem conexão com a internet</h1>
+      <p class="sub">Os dados dos alunos ficam só no servidor, por segurança. Assim que a internet voltar, é só tentar de novo.</p>
+      <div class="linha-botoes" style="justify-content:center"><a class="btn primario" href="/">{{ icone('refresh', 15) }} Tentar de novo</a></div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

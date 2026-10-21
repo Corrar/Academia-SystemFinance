@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titulo %}Novidades{% endblock %}
+{% block conteudo %}
+<div class="cabeca">
+  <div>
+    <h1>Novidades</h1>
+    <p class="sub">Você está na versão <b>{{ VERSAO }}</b>{% if COMMIT %} (publicação {{ COMMIT }}){% endif %}. Veja o que mudou em cada versão.</p>
+  </div>
+  <a class="btn" href="https://github.com/Corrar/Academia-SystemFinance/releases" target="_blank" rel="noopener">{{ icone('github', 15) }} Releases no GitHub</a>
+</div>
+
+<ol class="linha-tempo">
+  {% for v in historico %}
+  <li class="versao-item {{ 'atual' if v.versao == VERSAO }}">
+    <span class="versao-marca" aria-hidden="true">{{ icone('foguete' if loop.first else 'check', 15) }}</span>
+    <article class="card">
+      <header class="versao-cabeca">
+        <h2>v{{ v.versao }}{% if v.titulo %} · {{ v.titulo }}{% endif %}</h2>
+        <span class="sub">{{ v.data|data_br }}</span>
+        {% if v.versao == VERSAO %}<span class="pill azul">Versão atual</span>{% endif %}
+      </header>
+      <ul class="versao-itens">
+        {% for item in v.itens %}<li>{{ item|md_simples }}</li>{% endfor %}
+      </ul>
+    </article>
+  </li>
+  {% endfor %}
+</ol>
+{% endblock %}

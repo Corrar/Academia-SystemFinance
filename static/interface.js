@@ -184,6 +184,95 @@
     });
   });
 
+  // ---------------- app instalável (PWA) ----------------
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function () {}); });
+  }
+  var pedidoInstalar = null;
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    pedidoInstalar = e;
+    document.querySelectorAll("[data-area-instalar]").forEach(function (a) { a.hidden = false; });
+  });
+  document.querySelectorAll("[data-instalar]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      if (!pedidoInstalar) return;
+      pedidoInstalar.prompt();
+      pedidoInstalar.userChoice.finally(function () { pedidoInstalar = null; });
+    });
+  });
+
+  // ---------------- versão nova: bolinha até a pessoa abrir as novidades ----------------
+  var linkVersao = document.querySelector("[data-versao]");
+  if (linkVersao) {
+    var vista = null;
+    try { vista = localStorage.getItem("versao_vista"); } catch (e) {}
+    if (location.pathname === "/novidades") {
+      try { localStorage.setItem("versao_vista", linkVersao.dataset.versao); } catch (e) {}
+    } else if (vista !== linkVersao.dataset.versao) {
+      linkVersao.classList.add("tem-novidade");
+    }
+  }
+
+  // ---------------- copiar (PIX copia e cola, link da agenda) ----------------
+  document.querySelectorAll("[data-copiar]").forEach(function (botao) {
+    botao.addEventListener("click", function () {
+      var alvo = document.querySelector(botao.dataset.copiar);
+      if (!alvo) return;
+      var texto = alvo.value !== undefined ? alvo.value : alvo.textContent.trim();
+      var pronto = function () {
+        var antes = botao.innerHTML;
+        botao.textContent = "Copiado ✓";
+        setTimeout(function () { botao.innerHTML = antes; }, 1800);
+      };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(texto).then(pronto);
+      else { var t = document.createElement("textarea"); t.value = texto; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); pronto(); }
+    });
+  });
+
+  // ---------------- dados pelo CNPJ e pelo CEP (BrasilAPI, consultada pelo servidor) ----------------
+  var preencher = function (dados) {
+    Object.keys(dados).forEach(function (campo) {
+      var entrada = document.querySelector('[data-preencher="' + campo + '"]');
+      if (entrada && dados[campo]) entrada.value = dados[campo];
+    });
+  };
+  var consultar = function (url, saida, aoTerminar) {
+    saida.textContent = "Consultando…";
+    fetch(url, { credentials: "same-origin" })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, dados: j }; }); })
+      .then(function (r) { if (!r.ok) throw new Error(r.dados.erro || "Não encontrado"); aoTerminar(r.dados); })
+      .catch(function (e) { saida.textContent = e.message || "Não foi possível consultar agora."; });
+  };
+  document.querySelectorAll("[data-buscar-cnpj]").forEach(function (botao) {
+    botao.addEventListener("click", function () {
+      var cnpj = document.querySelector('[data-preencher="cnpj"]').value.replace(/\D/g, "");
+      var saida = document.querySelector("[data-resultado-cnpj]");
+      if (cnpj.length !== 14) { saida.textContent = "Digite os 14 números do CNPJ."; return; }
+      consultar(botao.dataset.buscarCnpj + cnpj, saida, function (d) {
+        preencher(d);
+        saida.textContent = "Preenchido com os dados da Receita Federal" + (d.situacao ? " (situação: " + d.situacao + ")" : "") + ". Confira e salve.";
+      });
+    });
+  });
+  document.querySelectorAll("[data-buscar-cep]").forEach(function (botao) {
+    botao.addEventListener("click", function () {
+      var cep = document.getElementById("cep").value.replace(/\D/g, "");
+      var saida = document.querySelector("[data-resultado-cep]");
+      if (cep.length !== 8) { saida.textContent = "Digite os 8 números do CEP."; return; }
+      consultar(botao.dataset.buscarCep + cep, saida, function (d) {
+        var endereco = document.querySelector('[data-preencher="endereco"]');
+        endereco.value = d.rua + ", nº – " + d.bairro + ", " + d.cidade + "/" + d.uf + ", CEP " + d.cep;
+        endereco.focus();
+        var pos = endereco.value.indexOf("nº") + 2;
+        endereco.setSelectionRange(pos, pos);
+        saida.textContent = "Endereço preenchido: complete o número.";
+        var cidade = document.querySelector('[data-preencher="pix_cidade"]');
+        if (cidade && !cidade.value) cidade.value = d.cidade;
+      });
+    });
+  });
+
   // ---------------- confirmações (AlertDialog) ----------------
   // <form data-confirmar="texto" data-titulo="..." data-ok="Rótulo" data-perigo>
   var alerta = document.getElementById("confirmar");

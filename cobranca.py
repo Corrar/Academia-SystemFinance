@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 import config
 import db
+import integracoes
 import notificacoes
 
 _trava = threading.Lock()
@@ -57,6 +58,10 @@ def executar_cobranca() -> dict:
             resumo["detalhes"].append({"aluno": aluno["nome"], "dia": dia_aviso, "resultado": res})
 
         resumo["na_fila"] = db.contar_fila()
+        try:  # resumo do dia para o administrador (só se estiver ligado e com e-mail automático)
+            resumo["resumo_admin"] = integracoes.enviar_resumo()
+        except Exception as e:  # noqa: BLE001 - o resumo nunca pode impedir a cobrança
+            resumo["resumo_admin"] = f"erro: {str(e)[:200]}"
         resumo["avisos_apagados"] = db.limpar_avisos_antigos(config.RETENCAO_AVISOS_DIAS)
         db.set_sistema("ultima_cobranca", datetime.now().isoformat(timespec="seconds"))
         db.set_sistema("ultima_cobranca_dia", hoje.isoformat())

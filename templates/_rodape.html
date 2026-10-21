@@ -11,6 +11,7 @@
       <a href="{{ url_for('privacidade') }}">Política de privacidade</a>
       <a href="{{ url_for('termos') }}">Termos de uso</a>
       <a href="{{ url_for('reembolso') }}">Cancelamento e reembolso</a>
+      {% if session.logado %}<a href="{{ url_for('novidades') }}">Versão {{ VERSAO }}{% if COMMIT %} ({{ COMMIT }}){% endif %}</a>{% else %}<span>Versão {{ VERSAO }}</span>{% endif %}
     </nav>
   </div>
 </footer>

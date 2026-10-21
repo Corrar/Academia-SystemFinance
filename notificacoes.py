@@ -17,6 +17,7 @@ from markupsafe import Markup
 import ajustes
 import config
 import db
+import pix
 
 _jinja = Environment(loader=FileSystemLoader(str(config.BASE_DIR / "templates")),
                      autoescape=select_autoescape(["html"]))
@@ -95,14 +96,23 @@ def montar_mensagem(aluno: dict) -> tuple[str, str]:
             "Regularize para continuar treinando sem interrupções."
         )
 
-    pix, telefone = ajustes.obter("chave_pix"), ajustes.obter("academia_telefone")
-    if pix:
-        texto += f"\n\nPague via PIX: {pix}"
+    pix_chave, telefone = ajustes.obter("chave_pix"), ajustes.obter("academia_telefone")
+    copia_e_cola = pix.codigo(valor_cobranca(aluno), "MENSALIDADE")
+    if copia_e_cola:
+        texto += f"\n\nPague com PIX copia e cola (já com o valor):\n{copia_e_cola}\n\nOu pela chave PIX: {pix_chave}"
     texto += "\n\nSe já pagou, por favor desconsidere esta mensagem."
     if telefone:
         texto += f"\nDúvidas: {telefone}"
     texto += "\nSe não quiser mais receber estes avisos, é só nos responder."
     return assunto, texto
+
+
+def url_qr_pix(valor) -> str:
+    """Imagem do QR Code PIX para o e-mail (precisa do endereço público do sistema)."""
+    base = ajustes.empresa()["url_publica"]
+    if not base or not ajustes.obter("chave_pix") or not valor:
+        return ""
+    return f"{base}/pix/qr/{round(float(valor) * 100)}.png"
 
 
 def montar_email_html(aluno: dict) -> str:
@@ -120,6 +130,8 @@ def montar_email_html(aluno: dict) -> str:
         academia=ajustes.obter("academia_nome"),
         telefone=ajustes.obter("academia_telefone"),
         pix=ajustes.obter("chave_pix"),
+        pix_codigo=pix.codigo(valor_cobranca(aluno), "MENSALIDADE"),
+        pix_qr=url_qr_pix(valor_cobranca(aluno)),
         vencimento=data_br(aluno["data_vencimento"]),
         valor=moeda(valor_cobranca(aluno)),
         plano=aluno.get("plano_nome") or "Mensalidade",

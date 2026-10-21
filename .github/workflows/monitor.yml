@@ -1,0 +1,49 @@
+# Confere de hora em hora se o sistema está no ar. Se cair, abre uma issue (o GitHub avisa por e-mail);
+# quando voltar, comenta e fecha a issue sozinho.
+name: Monitor
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  saude:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      URL: https://academia-systemfinance.vercel.app/api/saude
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Verificar o sistema
+        id: checar
+        run: |
+          for tentativa in 1 2 3; do
+            if curl -fsS --max-time 20 "$URL" -o resposta.json; then
+              echo "status=ok" >> "$GITHUB_OUTPUT"; cat resposta.json; exit 0
+            fi
+            sleep 20
+          done
+          echo "status=fora" >> "$GITHUB_OUTPUT"
+      - name: Abrir alerta
+        if: steps.checar.outputs.status == 'fora'
+        run: |
+          gh label create fora-do-ar --color B60205 --description "Sistema fora do ar" 2>/dev/null || true
+          aberta="$(gh issue list --label fora-do-ar --state open --json number --jq '.[0].number')"
+          if [ -z "$aberta" ]; then
+            gh issue create --label fora-do-ar --title "Sistema fora do ar" \
+              --body "O monitor não conseguiu acessar $URL em $(date -u '+%d/%m/%Y %H:%M') UTC (3 tentativas). Veja os logs na Vercel."
+          else
+            gh issue comment "$aberta" --body "Continua fora do ar em $(date -u '+%d/%m/%Y %H:%M') UTC."
+          fi
+      - name: Fechar alerta quando voltar
+        if: steps.checar.outputs.status == 'ok'
+        run: |
+          aberta="$(gh issue list --label fora-do-ar --state open --json number --jq '.[0].number' 2>/dev/null || true)"
+          if [ -n "$aberta" ]; then
+            gh issue close "$aberta" --comment "Voltou ao ar em $(date -u '+%d/%m/%Y %H:%M') UTC."
+          fi

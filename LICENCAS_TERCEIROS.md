@@ -12,6 +12,8 @@ O sistema não usa nenhuma imagem ou foto de banco de imagens. Os recursos visua
 | **Flask**, **Jinja2**, **MarkupSafe**, **Werkzeug** | dependências Python | BSD-3-Clause |
 | **requests** | dependência Python | Apache 2.0 |
 | **openpyxl** (leitura de planilhas .xlsx no cadastro rápido) | dependência Python | MIT |
+| **segno** (QR Code do PIX) | dependência Python | BSD-3-Clause |
+| **BrasilAPI** (consulta de CNPJ e CEP) | serviço público e gratuito, consultado pelo servidor | dados públicos (Receita Federal e Correios) |
 
 A logo é uma **recriação em vetor da logo da Corpu's Academia**, enviada pelo dono do projeto
 (fundo vinho listrado, nome em letra cursiva vermelha com contorno dourado). Para usar o arquivo original,
