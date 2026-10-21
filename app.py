@@ -56,6 +56,7 @@ FORMAS_PAGAMENTO = ["PIX", "Dinheiro", "Cartão de débito", "Cartão de crédit
 def contexto_global():
     return {
         "academia": ajustes.obter("academia_nome"),
+        "academia_curto": ajustes.obter("academia_nome").split()[0],
         "empresa": ajustes.empresa(),
         "SENHA_PADRAO": config.SENHA_PADRAO,
         "BANCO_TEMPORARIO": config.BANCO_TEMPORARIO,

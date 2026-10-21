@@ -80,7 +80,7 @@
     <span class="ico p g-azul">{{ icone('send', 17) }}</span>
     <div><h2>Enviar aviso de vencimento</h2><p class="sub">mensagem que será enviada agora</p></div>
   </div>
-  <div class="msg-preview">{{ preview }}</div>
+  <div class="msg-preview" tabindex="0" role="region" aria-label="Prévia da mensagem de aviso">{{ preview }}</div>
   <div class="linha-botoes">
     {% set pode_email = aluno.email and aluno.aceita_email %}{% set pode_wa = aluno.telefone and aluno.aceita_whatsapp %}
     {% for canal, ic, rotulo, ok in [('email', 'mail', 'Enviar e-mail', pode_email), ('whatsapp', 'whatsapp', 'Enviar WhatsApp', pode_wa), ('ambos', 'send', 'Enviar pelos dois', pode_email or pode_wa)] %}

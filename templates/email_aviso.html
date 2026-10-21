@@ -10,19 +10,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ rotulo }} · {{ academia }}</title>
 </head>
-<body style="margin:0;padding:0;background:#f5f6f8;font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+<body style="margin:0;padding:0;background:#f5f6f8;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6f8;padding:32px 12px;">
 <tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
 
     <!-- marca -->
-    <tr><td style="padding:0 4px 18px;">
-      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-        <td style="width:34px;height:34px;border-radius:50%;border:2.5px solid #1e1b6b;text-align:center;vertical-align:middle;">
-          <div style="width:14px;height:14px;border-radius:50%;background:#facc15;margin:0 auto;"></div>
-        </td>
-        <td style="padding-left:10px;font-weight:800;font-size:15px;color:#0f172a;">{{ academia }}</td>
-      </tr></table>
+    <tr><td align="center" style="padding:0 4px 18px;">
+      {% if empresa.url_publica %}
+        <img src="{{ empresa.url_publica }}/static/logo-email.png" width="200" height="56" alt="{{ academia }}" style="display:block;border:0;">
+      {% else %}
+        <div style="font-family:'Brush Script MT','Segoe Script',cursive;font-size:30px;font-weight:700;color:#e3221d;">{{ academia }}</div>
+      {% endif %}
     </td></tr>
 
     <!-- card -->

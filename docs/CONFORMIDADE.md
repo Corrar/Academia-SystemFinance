@@ -33,7 +33,7 @@ Revisão feita em 21/10/2026 sobre o sistema de cobrança (painel interno + pág
 
 ## 4. Acessibilidade (WCAG 2.1 AA)
 
-Auditoria automática com **axe-core 4.10** em 13 páginas (login, 3 documentos e 9 telas do painel) + teste manual de teclado.
+Auditoria automática com **axe-core 4.10** em 14 páginas, nos modos **claro e escuro** e nos tamanhos **computador (1280 px) e celular (390 px)**, mais teste manual de teclado.
 
 | Item | Antes | Depois |
 |---|---|---|
@@ -53,7 +53,7 @@ com leitor de tela (NVDA no Windows ou VoiceOver no Mac/iPhone).
 |---|---|---|
 | Avaliações falsas | ✅ | Nenhuma avaliação, depoimento ou nota no sistema. Os 30 alunos do `seed.py` são **fictícios e só para demonstração**; o script avisa para não usar em produção. |
 | Promessas sem comprovação | ✅ | Revisados todos os textos (telas, e-mails, documentos, README). Nada de "garantido", "100%" ou "o melhor". Dois textos imprecisos corrigidos: "a Evolution API é gratuita" (o software é; o servidor é pago) e "roda em qualquer computador". |
-| Licenças de imagens | ✅ | Não há fotos nem imagens de banco de imagens. Ícones **Lucide** (ISC) e fonte **Plus Jakarta Sans** (OFL 1.1), ambos de uso comercial livre, com licenças em `LICENCAS_TERCEIROS.md` e `static/fonts/OFL.txt`. 📋 O logo é desenhado em CSS a partir da identidade visual fornecida; se a marca pertencer a outra empresa, troque pelo logo da academia. |
+| Licenças de imagens | ✅ | Não há fotos nem imagens de banco de imagens. Ícones **Lucide** (ISC) e fontes **Inter** e **Kaushan Script** (OFL 1.1), ambos de uso comercial livre, com licenças em `LICENCAS_TERCEIROS.md` e `static/fonts/OFL.txt`. A escrita da logo foi redesenhada em vetor a partir da logo enviada pela academia. |
 | Dados legais da empresa | 🟡 | Novos campos em **Configurações → Dados legais**: razão social, CNPJ, endereço, e-mail, encarregado (DPO). Aparecem no rodapé do painel, nas páginas públicas e em todo e-mail de cobrança. Enquanto faltarem, o painel mostra um alerta e os documentos destacam o trecho em amarelo, sem inventar dados. |
 
 ## 6. Segurança e riscos jurídicos

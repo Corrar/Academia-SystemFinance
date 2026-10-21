@@ -1,34 +1,34 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_head.html" %}
   <meta name="robots" content="noindex, nofollow">
   <title>{% block titulo %}Painel{% endblock %} · {{ academia }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 {% set ep = request.endpoint or '' %}
+{% set menu = [
+  ('dashboard', 'layout', 'Dashboard', 'Início', ep == 'dashboard'),
+  ('alunos', 'users', 'Inscritos', 'Inscritos', ep.startswith('aluno')),
+  ('validade', 'calendar', 'Validade', 'Validade', ep == 'validade'),
+  ('financeiro', 'wallet', 'Financeiro', 'Financeiro', ep == 'financeiro'),
+  ('avisos', 'bell', 'Avisos', 'Avisos', ep == 'avisos'),
+  ('planos', 'tag', 'Planos', 'Planos', ep == 'planos'),
+  ('configuracoes', 'settings', 'Configurações', 'Ajustes', ep == 'configuracoes'),
+] %}
 <header class="topbar">
-  <a class="logo" href="{{ url_for('dashboard') }}"><span class="logo-mark" aria-hidden="true"></span><span class="nome">{{ academia }}</span></a>
+  <a class="logo" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='logo-horizontal.svg') }}" alt="{{ academia }} – início" width="122" height="34"></a>
   <nav class="tabs" aria-label="Menu principal">
-    {% for destino, ic, rotulo, ativo in [
-      ('dashboard', 'layout', 'Dashboard', ep == 'dashboard'),
-      ('alunos', 'users', 'Inscritos', ep.startswith('aluno')),
-      ('validade', 'calendar', 'Validade', ep == 'validade'),
-      ('financeiro', 'wallet', 'Financeiro', ep == 'financeiro'),
-      ('avisos', 'bell', 'Avisos', ep == 'avisos'),
-      ('planos', 'tag', 'Planos', ep == 'planos'),
-      ('configuracoes', 'settings', 'Configurações', ep == 'configuracoes'),
-    ] %}
+    {% for destino, ic, rotulo, curto, ativo in menu %}
       <a href="{{ url_for(destino) }}" class="{{ 'ativo' if ativo }}" {{ 'aria-current="page"'|safe if ativo }}>{{ icone(ic, 16) }} {{ rotulo }}</a>
     {% endfor %}
   </nav>
   <div class="usuario">
+    {% set classe = '' %}{% include "_tema_btn.html" %}
     <div><strong>{{ usuario }}</strong><small>Administrador · Geral</small></div>
     <span class="avatar" aria-hidden="true">{{ usuario[:1] }}</span>
-    <a class="sair" href="{{ url_for('logout') }}" title="Sair" aria-label="Sair do sistema">{{ icone('logout', 17) }}</a>
+    <a class="sair" href="{{ url_for('logout') }}" title="Sair" aria-label="Sair do sistema">{{ icone('logout', 18) }}</a>
   </div>
 </header>
 
@@ -48,5 +48,30 @@
   {% block conteudo %}{% endblock %}
 </main>
 {% include "_rodape.html" %}
+
+{# Barra de abas inferior (só aparece no celular) #}
+{% set no_mais = ep in ['avisos', 'planos', 'configuracoes'] %}
+<nav class="barra-abas" aria-label="Menu">
+  {% for destino, ic, rotulo, curto, ativo in menu[:4] %}
+    <a href="{{ url_for(destino) }}" class="{{ 'ativo' if ativo }}" {{ 'aria-current="page"'|safe if ativo }}>{{ icone('home' if destino == 'dashboard' else ic, 24) }}<span>{{ curto }}</span></a>
+  {% endfor %}
+  <button type="button" class="{{ 'ativo' if no_mais }}" data-abrir-mais aria-haspopup="dialog" aria-controls="mais">{{ icone('mais', 24) }}<span>Mais</span></button>
+</nav>
+
+<dialog class="folha" id="mais" aria-label="Mais opções">
+  <div class="folha-corpo">
+    <div class="grupo">
+      <div class="grupo-titulo">{{ usuario }} · Administrador</div>
+      {% for destino, ic, rotulo, curto, ativo in menu[4:] %}
+        <a href="{{ url_for(destino) }}" {{ 'aria-current="page"'|safe if ativo }}>{{ icone(ic, 20) }} {{ rotulo }}</a>
+      {% endfor %}
+    </div>
+    <div class="grupo">
+      <button type="button" data-alternar-tema><span class="lua">{{ icone('moon', 20) }}</span><span class="sol">{{ icone('sun', 20) }}</span><span data-rotulo-tema>Usar modo escuro</span></button>
+      <a class="perigo" href="{{ url_for('logout') }}">{{ icone('logout', 20) }} Sair</a>
+    </div>
+    <div class="grupo"><button type="button" class="cancelar" data-fechar>Cancelar</button></div>
+  </div>
+</dialog>
 </body>
 </html>

@@ -12,7 +12,7 @@ CAMPOS = {
     "cnpj": None,
     "endereco": None,
     "email_contato": None,
-    "url_publica": None,
+    "url_publica": "URL_PUBLICA",
     "encarregado_nome": None,
     "encarregado_email": None,
     "cidade_foro": None,

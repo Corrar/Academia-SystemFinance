@@ -51,7 +51,9 @@ if BANCO_TEMPORARIO:
 # Segredo que a Vercel envia no cabeçalho Authorization ao chamar o Cron
 CRON_SECRET = _env("CRON_SECRET")
 
-ACADEMIA_NOME = _env("ACADEMIA_NOME", "Minha Academia")
+ACADEMIA_NOME = _env("ACADEMIA_NOME", "Corpu's Academia")
+# Endereço público do sistema (links e logo nos e-mails), ex.: https://academia-systemfinance.vercel.app
+URL_PUBLICA = _env("URL_PUBLICA")
 ACADEMIA_TELEFONE = _env("ACADEMIA_TELEFONE")
 CHAVE_PIX = _env("CHAVE_PIX")
 

@@ -3,21 +3,20 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_head.html" %}
   <title>{% block titulo %}{% endblock %} · {{ e.academia_nome }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
-<header class="topbar">
-  <a class="logo" href="{{ url_for('privacidade') }}"><span class="logo-mark" aria-hidden="true"></span><span class="nome">{{ e.academia_nome }}</span></a>
+<header class="topbar publica">
+  <a class="logo" href="{{ url_for('privacidade') }}"><img src="{{ url_for('static', filename='logo-horizontal.svg') }}" alt="{{ e.academia_nome }}" width="122" height="34"></a>
   <nav class="tabs" aria-label="Documentos">
     {% set ep = request.endpoint %}
     <a href="{{ url_for('privacidade') }}" class="{{ 'ativo' if ep == 'privacidade' }}" {{ 'aria-current="page"'|safe if ep == 'privacidade' }}>{{ icone('lock', 16) }} Privacidade</a>
     <a href="{{ url_for('termos') }}" class="{{ 'ativo' if ep == 'termos' }}" {{ 'aria-current="page"'|safe if ep == 'termos' }}>{{ icone('receipt', 16) }} Termos de uso</a>
     <a href="{{ url_for('reembolso') }}" class="{{ 'ativo' if ep == 'reembolso' }}" {{ 'aria-current="page"'|safe if ep == 'reembolso' }}>{{ icone('wallet', 16) }} Cancelamento e reembolso</a>
   </nav>
+  <div class="usuario">{% set classe = '' %}{% include "_tema_btn.html" %}</div>
 </header>
 <main class="pagina doc" id="conteudo" tabindex="-1">
   <div class="hero" style="text-align:left">

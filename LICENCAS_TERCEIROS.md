@@ -6,12 +6,15 @@ terceiros são os ícones e a fonte abaixo, ambos com licença livre que permite
 | Componente | Onde | Licença |
 |---|---|---|
 | Ícones **Lucide** (desenhos SVG) | `icones.py` | ISC (texto completo abaixo) |
-| Fonte **Plus Jakarta Sans** | `static/fonts/` | SIL Open Font License 1.1 (`static/fonts/OFL.txt`) |
+| Fonte **Inter** (usada onde a fonte da Apple não existe) | `static/fonts/` | SIL Open Font License 1.1 (`static/fonts/OFL.txt`) |
+| Fonte **Kaushan Script** (só os contornos das letras, convertidos em desenho na escrita da logo) | `static/logo-horizontal.svg`, `static/favicon.svg`, `static/*.png`, `docs/assets/banner.svg` | SIL Open Font License 1.1, que permite usar a fonte em logos e imagens |
+| Fonte **Kaushan Script** (só os contornos das letras, convertidos em desenho na logo) | `static/logo*.svg`, `static/logo*.png`, `docs/assets/banner.svg` | SIL Open Font License 1.1, que permite usar a fonte em logos e imagens |
 | **Flask**, **Jinja2**, **MarkupSafe**, **Werkzeug** | dependências Python | BSD-3-Clause |
 | **requests** | dependência Python | Apache 2.0 |
 
-O logo do cabeçalho é desenhado só com CSS (círculo com ponto amarelo) e segue a identidade visual
-fornecida pelo dono do projeto. Se a academia tiver logo próprio, substitua `.logo-mark` em `static/style.css`.
+A logo é uma **recriação em vetor da logo da Corpu's Academia**, enviada pelo dono do projeto
+(fundo vinho listrado, nome em letra cursiva vermelha com contorno dourado). Para usar o arquivo original,
+substitua `static/logo.svg` (quadrada), `static/logo-horizontal.svg` (cabeçalho) e `static/logo-email.png` (e-mails).
 
 ## Lucide
 

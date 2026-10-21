@@ -1,16 +1,15 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_head.html" %}
   <meta name="robots" content="noindex, nofollow">
   <title>Entrar · {{ academia }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+{% set classe = 'tema-canto' %}{% include "_tema_btn.html" %}
 <main class="login-pg">
   <form method="post" class="login-box">
-    <div class="logo"><span class="logo-mark" aria-hidden="true"></span><span>{{ academia }}</span></div>
+    <img class="logo-login" src="{{ url_for('static', filename='logo-horizontal.svg') }}" alt="{{ academia }}" width="230" height="64">
     <div class="hero" style="margin-bottom:22px">
       <p class="saudacao">Bem-vindo de volta 👋</p>
       <h1>Acesse o painel</h1>

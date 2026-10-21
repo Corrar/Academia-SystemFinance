@@ -1,14 +1,16 @@
 <div align="center">
 
-<img src="docs/assets/banner.svg" alt="Academia: cobrança automática de mensalidades" width="600">
+<img src="docs/assets/banner.svg" alt="Corpu's Academia: sistema de cobrança de mensalidades" width="640">
 
-<p><strong>Sistema web de cobrança automática para academias: mensalistas, validade dos planos, inadimplentes e avisos de vencimento por e-mail e WhatsApp.</strong></p>
+<p><strong>Sistema de cobrança automática da Corpu's Academia: mensalistas, validade dos planos, inadimplentes e avisos de vencimento por e-mail e WhatsApp.</strong></p>
 
-<a href="#pré-visualização"><img alt="status: pronto" src="https://img.shields.io/badge/status-pronto-2ea043"></a>
+<p><a href="https://academia-systemfinance.vercel.app"><b>academia-systemfinance.vercel.app</b></a></p>
+
+<a href="#pré-visualização"><img alt="status: em produção" src="https://img.shields.io/badge/status-em%20produ%C3%A7%C3%A3o-34c759"></a>
 <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776ab?logo=python&logoColor=white">
 <img alt="Flask 3" src="https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white">
 <img alt="SQLite ou Postgres" src="https://img.shields.io/badge/banco-SQLite%20%C2%B7%20Postgres-4169e1?logo=postgresql&logoColor=white">
-<a href="#publicar-na-vercel"><img alt="Vercel" src="https://img.shields.io/badge/Vercel-deploy-000000?logo=vercel&logoColor=white"></a>
+<a href="https://academia-systemfinance.vercel.app"><img alt="Vercel: no ar" src="https://img.shields.io/badge/Vercel-no%20ar-000000?logo=vercel&logoColor=white"></a>
 <img alt="WhatsApp: Z-API, Evolution, Meta, Twilio" src="https://img.shields.io/badge/WhatsApp-Z--API%20%C2%B7%20Meta%20%C2%B7%20Twilio-25d366?logo=whatsapp&logoColor=white">
 <a href="docs/CONFORMIDADE.md"><img alt="LGPD revisado" src="https://img.shields.io/badge/LGPD-revisado-6d28d9"></a>
 <a href="docs/CONFORMIDADE.md#4-acessibilidade-wcag-21-aa"><img alt="WCAG 2.1 AA" src="https://img.shields.io/badge/WCAG-2.1%20AA-0f766e"></a>
@@ -22,7 +24,14 @@
 <p align="center">
   <img src="docs/assets/dashboard.png" alt="Dashboard: mensalistas ativos, faturado no mês, receita prevista e cards dos inadimplentes com as etapas de aviso" width="100%">
 </p>
-<p align="center"><sub>Captura real do painel, com alunos fictícios de demonstração.</sub></p>
+<p align="center"><sub>Captura real do painel (modo claro), com alunos fictícios de demonstração.</sub></p>
+
+<p align="center">
+  <img src="docs/assets/dashboard-escuro.png" alt="Dashboard no modo escuro" width="62%">
+  &nbsp;
+  <img src="docs/assets/celular.png" alt="Painel no celular com a barra de abas inferior" width="26%">
+</p>
+<p align="center"><sub>Modo escuro e versão para celular, com barra de abas inferior.</sub></p>
 
 <table>
   <tr>
@@ -31,6 +40,8 @@
     <td width="33%" align="center"><img src="docs/assets/email.png" alt="E-mail de aviso de mensalidade em atraso recebido pelo aluno"><br><sub><b>E-mail</b> que o aluno recebe</sub></td>
   </tr>
 </table>
+
+Visual no estilo Apple (fonte do sistema, botões em pílula, controles segmentados), com **modo escuro** e, no celular, **barra de abas inferior**.
 
 Feito em **Python + Flask**. No computador usa **SQLite** (não precisa instalar banco de dados); na nuvem
 (Vercel) usa **Postgres**. Roda em Windows, Mac ou Linux com Python 3.10 ou mais novo.
@@ -205,7 +216,7 @@ Resumo da revisão (detalhes em [`docs/CONFORMIDADE.md`](docs/CONFORMIDADE.md)):
 - **LGPD:** coleta mínima (sem data de nascimento, CPF opcional), autorização de avisos por canal, registro do aceite dos
   termos, exportação e anonimização de dados na ficha do aluno, histórico de avisos apagado após `RETENCAO_AVISOS_DIAS`.
 - **Sem rastreamento:** nenhum analytics ou script de terceiros. A fonte é servida pelo próprio sistema e o único cookie é o de sessão.
-- **Acessibilidade:** 0 ocorrências na auditoria axe-core (WCAG 2.1 AA). Antes eram 477.
+- **Acessibilidade:** 0 ocorrências na auditoria axe-core (WCAG 2.1 AA), nos modos claro e escuro, no computador e no celular. Antes eram 477.
 - **Segurança:** bloqueio após 5 logins errados, cabeçalhos de segurança (CSP etc.), chave de sessão aleatória e alerta de senha padrão.
 - **Cobrança não abusiva:** avisos só em horário comercial e no máximo `MAX_LEMBRETES_SEMANAIS` lembretes semanais.
 
