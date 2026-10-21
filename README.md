@@ -17,7 +17,7 @@ computador (Windows, Mac ou Linux) ou servidor.
 | **Financeiro** | Pagamentos de qualquer mês, total recebido, ticket médio e total por forma de pagamento |
 | **Avisos e cobrança** | Histórico de todos os avisos enviados, status do e-mail e WhatsApp, e botão "Executar cobrança agora" |
 | **Planos** | Mensal, trimestral, semestral… (valor e duração em dias) |
-| **Configurações** | Nome da academia, telefone, chave PIX e **servidor de e-mail** (com atalhos para Gmail, Outlook, Hostinger, Locaweb, Zoho), botão de **e-mail de teste** e pré-visualização do e-mail |
+| **Configurações** | Nome da academia, telefone, chave PIX **servidor de e-mail** (com atalhos para Gmail, Outlook, Hostinger, Locaweb, Zoho) e **provedor de WhatsApp**, com botões de **teste** para os dois e pré-visualização do e-mail |
 
 ### Como funciona a cobrança automática
 
@@ -78,14 +78,21 @@ texto simples. Use **Ver modelo do e-mail** para conferir antes.
 
 ### WhatsApp
 
-Escolha **um** provedor em `WHATSAPP_PROVEDOR`:
+Pelo próprio sistema: menu **Configurações → Envio por WhatsApp**. Escolha o provedor, preencha os
+dados que aparecem, salve e use **Enviar WhatsApp de teste**.
 
-| Provedor | Quando usar | Variáveis |
+| Provedor | Quando usar | O que preencher |
 |---|---|---|
-| `zapi` | Mais simples no Brasil: conecta o seu número lendo um QR Code. Serviço pago | `ZAPI_INSTANCIA`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` |
-| `evolution` | Gratuito/open-source, você hospeda a Evolution API | `EVOLUTION_URL`, `EVOLUTION_INSTANCIA`, `EVOLUTION_APIKEY` |
-| `meta` | API oficial do WhatsApp Business (Cloud API). Exige um template aprovado para mandar mensagem a quem não falou com você nas últimas 24h | `META_TOKEN`, `META_PHONE_ID`, `META_TEMPLATE` |
-| `twilio` | API oficial via Twilio | `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_NUMERO` |
+| **Z-API** | Mais simples no Brasil: conecta o número da academia lendo um QR Code. Serviço pago | ID da instância, Token e Client-Token (se ativado) |
+| **Evolution API** | Gratuito/open-source, você hospeda | URL do servidor, nome da instância e API key |
+| **Meta Cloud API** | API oficial do WhatsApp Business. Exige template aprovado para avisar quem não falou com você nas últimas 24h | Phone number ID, token e nome do template |
+| **Twilio** | API oficial via Twilio | Account SID, Auth Token e número remetente |
+
+Senhas e tokens nunca são exibidos de novo na tela. Deixar o campo em branco ao salvar mantém o valor atual.
+Se o envio falhar, o erro devolvido pelo provedor aparece no teste e no histórico de avisos.
+
+> Também dá para configurar pelo `.env` (`WHATSAPP_PROVEDOR`, `ZAPI_*`, `EVOLUTION_*`, `META_*`, `TWILIO_*`).
+> O que for salvo na tela tem prioridade.
 
 **Template da Meta**: crie um template de categoria *Utilidade* com 3 variáveis, por exemplo:
 > Olá {{1}}! Sua mensalidade vence em {{2}}, no valor de {{3}}. Qualquer dúvida, estamos à disposição.

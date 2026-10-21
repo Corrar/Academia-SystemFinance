@@ -29,7 +29,8 @@
       {% if cfg.whatsapp %}<span class="pill verde">{{ icone('check', 11) }} Ativo</span>{% else %}<span class="pill">{{ icone('lock', 11) }} Simulado</span>{% endif %}
     </div>
     <h2>WhatsApp</h2>
-    <p class="sub">{{ ('Provedor: ' ~ cfg.whatsapp) if cfg.whatsapp else 'Configure WHATSAPP_PROVEDOR no arquivo .env' }}</p>
+    <p class="sub">{{ ('Provedor: ' ~ cfg.whatsapp) if cfg.whatsapp else 'Nenhum provedor configurado' }}</p>
+    <div class="linha-botoes" style="margin-top:14px"><a class="btn sm" href="{{ url_for('configuracoes') }}#whatsapp">{{ icone('settings', 14) }} Configurar</a></div>
   </div>
   <div class="modulo">
     <div class="topo-kpi"><span class="ico g-laranja">{{ icone('clock', 20) }}</span><span class="pill azul">todo dia {{ cfg.hora }}h</span></div>

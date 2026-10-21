@@ -4,7 +4,7 @@
 <div class="cabeca">
   <div>
     <h1>Configurações</h1>
-    <p class="sub">Dados da academia e servidor de e-mail usado nos avisos de vencimento.</p>
+    <p class="sub">Dados da academia, e-mail e WhatsApp usados nos avisos de vencimento.</p>
   </div>
   <a class="btn" href="{{ url_for('email_preview') }}" target="_blank">{{ icone('eye', 15) }} Ver modelo do e-mail</a>
 </div>
@@ -45,8 +45,8 @@
       </div>
       <div class="campo"><label>Usuário (e-mail de login)</label><input name="smtp_usuario" value="{{ v.smtp_usuario }}" placeholder="financeiro@suaacademia.com.br" autocomplete="off"></div>
       <div class="campo">
-        <label>Senha {% if tem_senha %}<span class="ajuda">· salva (deixe em branco para manter)</span>{% endif %}</label>
-        <input name="smtp_senha" type="password" placeholder="{{ '••••••••' if tem_senha else 'Senha de app' }}" autocomplete="new-password">
+        <label>Senha {% if 'smtp_senha' in salvos %}<span class="ajuda">· salva (deixe em branco para manter)</span>{% endif %}</label>
+        <input name="smtp_senha" type="password" placeholder="{{ '••••••••' if 'smtp_senha' in salvos else 'Senha de app' }}" autocomplete="new-password">
       </div>
       <div class="campo"><label>Remetente <span class="ajuda">· opcional</span></label><input name="smtp_remetente" value="{{ v.smtp_remetente }}" placeholder="igual ao usuário"></div>
     </div>
@@ -56,6 +56,93 @@
       Use essa senha de 16 letras aqui, não a senha normal da conta.
       <strong>Outlook/Hotmail:</strong> contas pessoais podem exigir senha de app em <a href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noopener">account.live.com</a>.
     </div></div>
+  </section>
+
+{% macro campo(nome, rotulo, ph='', ajuda='') %}
+  {% set secreto = nome in salvos or nome in ['zapi_token', 'zapi_client_token', 'evolution_apikey', 'meta_token', 'twilio_token'] %}
+  <div class="campo">
+    <label>{{ rotulo }}{% if nome in salvos %} <span class="ajuda">· salvo (em branco mantém)</span>{% elif ajuda %} <span class="ajuda">· {{ ajuda }}</span>{% endif %}</label>
+    {% if secreto %}
+      <input name="{{ nome }}" type="password" placeholder="{{ '••••••••' if nome in salvos else ph }}" autocomplete="new-password">
+    {% else %}
+      <input name="{{ nome }}" value="{{ v[nome] }}" placeholder="{{ ph }}" autocomplete="off">
+    {% endif %}
+  </div>
+{% endmacro %}
+
+  <section class="card" id="whatsapp">
+    <div class="card-titulo">
+      <span class="ico p g-verde">{{ icone('whatsapp', 17) }}</span>
+      <div><h2>Envio por WhatsApp</h2><p class="sub">{% if v.wa_provedor != 'simulado' %}<span class="pill verde">{{ icone('check', 11) }} Ativo</span>{% else %}<span class="pill">{{ icone('lock', 11) }} Modo simulado</span>{% endif %}</p></div>
+    </div>
+
+    <label style="display:block;margin-bottom:8px">Selecione o provedor</label>
+    <div class="opcoes">
+      {% for chave, desc, ic, cor in provedores %}
+      <label class="opcao">
+        <input type="radio" name="wa_provedor" value="{{ chave }}" {{ 'checked' if v.wa_provedor == chave }}>
+        <span class="radio"></span>
+        <span class="ico p {{ cor }}">{{ icone(ic, 17) }}</span>
+        <strong>{{ {'simulado': 'Simulado', 'zapi': 'Z-API', 'evolution': 'Evolution API', 'meta': 'Meta Cloud API', 'twilio': 'Twilio'}[chave] }}</strong>
+        <small>{{ desc }}</small>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="wa-grupo" data-provedor="simulado">
+      <div class="info">{{ icone('lock', 16) }}<div>No modo simulado as mensagens ficam só registradas no histórico de avisos. Para enviar sem nenhum provedor, use o botão <strong>Abrir no WhatsApp</strong> na ficha do aluno: ele abre o WhatsApp com a mensagem pronta.</div></div>
+    </div>
+
+    <div class="wa-grupo" data-provedor="zapi">
+      <div class="form-grid">
+        {{ campo('zapi_instancia', 'ID da instância', '3C2A...') }}
+        {{ campo('zapi_token', 'Token da instância', 'token') }}
+        {{ campo('zapi_client_token', 'Client-Token (segurança)', 'opcional') }}
+      </div>
+      <div class="info" style="margin-top:14px">{{ icone('alert', 16) }}<div>
+        Crie uma instância em <a href="https://app.z-api.io" target="_blank" rel="noopener">app.z-api.io</a>, leia o QR Code com o WhatsApp da academia
+        e copie o <strong>ID</strong> e o <strong>Token</strong> da instância. O <strong>Client-Token</strong> fica em <em>Segurança</em> (preencha se estiver ativado).
+      </div></div>
+    </div>
+
+    <div class="wa-grupo" data-provedor="evolution">
+      <div class="form-grid">
+        {{ campo('evolution_url', 'URL do servidor', 'https://evolution.suaacademia.com.br') }}
+        {{ campo('evolution_instancia', 'Nome da instância', 'academia') }}
+        {{ campo('evolution_apikey', 'API key', 'apikey') }}
+      </div>
+      <div class="info" style="margin-top:14px">{{ icone('alert', 16) }}<div>
+        A <a href="https://doc.evolution-api.com" target="_blank" rel="noopener">Evolution API</a> é gratuita e roda no seu servidor.
+        Crie uma instância, conecte o WhatsApp pelo QR Code e use a <strong>API key</strong> definida em <code>AUTHENTICATION_API_KEY</code> (ou a chave da instância).
+      </div></div>
+    </div>
+
+    <div class="wa-grupo" data-provedor="meta">
+      <div class="form-grid">
+        {{ campo('meta_phone_id', 'Phone number ID', '1234567890') }}
+        {{ campo('meta_token', 'Token de acesso', 'EAAG...') }}
+        {{ campo('meta_template', 'Nome do template', 'aviso_mensalidade', 'recomendado') }}
+        {{ campo('meta_template_idioma', 'Idioma do template', 'pt_BR') }}
+      </div>
+      <div class="info" style="margin-top:14px">{{ icone('alert', 16) }}<div>
+        Em <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">developers.facebook.com</a> → seu app → WhatsApp → <em>Configuração da API</em>
+        copie o <strong>Phone number ID</strong>. Gere um <strong>token permanente</strong> com um usuário do sistema no Gerenciador de Negócios.
+        Para avisar alunos que não falaram com a academia nas últimas 24h, a Meta exige um <strong>template aprovado</strong> (categoria Utilidade) com 3 variáveis:
+        <code>{{ '{{1}}' }}</code> nome, <code>{{ '{{2}}' }}</code> vencimento, <code>{{ '{{3}}' }}</code> valor.
+      </div></div>
+    </div>
+
+    <div class="wa-grupo" data-provedor="twilio">
+      <div class="form-grid">
+        {{ campo('twilio_sid', 'Account SID', 'AC...') }}
+        {{ campo('twilio_token', 'Auth Token', 'token') }}
+        {{ campo('twilio_numero', 'Número WhatsApp do remetente', '+14155238886') }}
+      </div>
+      <div class="info" style="margin-top:14px">{{ icone('alert', 16) }}<div>
+        No <a href="https://console.twilio.com" target="_blank" rel="noopener">console da Twilio</a> copie o <strong>Account SID</strong> e o <strong>Auth Token</strong>.
+        Para testar, use o número do sandbox (+1 415 523 8886) e envie a palavra de ativação do sandbox pelo WhatsApp antes.
+      </div></div>
+    </div>
   </section>
 
   <div class="linha-botoes"><button class="btn primario">{{ icone('check', 15) }} Salvar configurações</button></div>
@@ -70,7 +157,25 @@
   </div>
 </form>
 
+<form method="post" action="{{ url_for('teste_whatsapp') }}" class="card" style="margin-top:18px">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <div class="card-titulo"><span class="ico p g-verde">{{ icone('whatsapp', 17) }}</span><div><h2>Enviar WhatsApp de teste</h2><p class="sub">salve as configurações antes de testar</p></div></div>
+  <div class="barra-busca" style="margin:0">
+    <label class="busca" style="max-width:380px">{{ icone('phone', 16) }}<input name="numero" placeholder="(11) 99999-0000" value="{{ v.academia_telefone }}" inputmode="tel" required></label>
+    <button class="btn primario">{{ icone('send', 15) }} Enviar teste</button>
+  </div>
+</form>
+
 <script>
+  // mostra só os campos do provedor de WhatsApp escolhido
+  const radios = document.querySelectorAll('input[name=wa_provedor]');
+  function mostrarProvedor() {
+    const atual = document.querySelector('input[name=wa_provedor]:checked')?.value || 'simulado';
+    document.querySelectorAll('.wa-grupo').forEach(g => g.hidden = g.dataset.provedor !== atual);
+  }
+  radios.forEach(r => r.addEventListener('change', mostrarProvedor));
+  mostrarProvedor();
+
   document.querySelectorAll('.presets [data-host]').forEach(b => b.addEventListener('click', () => {
     document.getElementById('smtp_host').value = b.dataset.host;
     document.getElementById('smtp_porta').value = b.dataset.porta;

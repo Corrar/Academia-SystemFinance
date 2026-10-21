@@ -148,29 +148,39 @@ def enviar_email(destino: str, assunto: str, texto: str, html: str | None = None
 
 # ---------------------------------------------------------------- WhatsApp
 
-def _zapi(numero: str, texto: str) -> None:
-    url = f"https://api.z-api.io/instances/{config.ZAPI_INSTANCIA}/token/{config.ZAPI_TOKEN}/send-text"
-    headers = {"Client-Token": config.ZAPI_CLIENT_TOKEN} if config.ZAPI_CLIENT_TOKEN else {}
-    r = requests.post(url, json={"phone": numero, "message": texto}, headers=headers, timeout=30)
-    r.raise_for_status()
+def _verificar(r: requests.Response) -> None:
+    """Erro HTTP com a resposta do provedor, para aparecer no histórico de avisos."""
+    if r.status_code >= 400:
+        raise RuntimeError(f"HTTP {r.status_code}: {r.text[:300]}")
+    try:
+        corpo = r.json()
+    except ValueError:
+        return
+    if isinstance(corpo, dict) and corpo.get("error"):  # Z-API responde 200 com {"error": ...}
+        raise RuntimeError(str(corpo.get("message") or corpo["error"])[:300])
 
 
-def _evolution(numero: str, texto: str) -> None:
-    url = f"{config.EVOLUTION_URL}/message/sendText/{config.EVOLUTION_INSTANCIA}"
-    r = requests.post(url, json={"number": numero, "text": texto},
-                      headers={"apikey": config.EVOLUTION_APIKEY}, timeout=30)
-    r.raise_for_status()
+def _zapi(cfg: dict, numero: str, texto: str) -> None:
+    url = f"https://api.z-api.io/instances/{cfg['zapi_instancia']}/token/{cfg['zapi_token']}/send-text"
+    headers = {"Client-Token": cfg["zapi_client_token"]} if cfg["zapi_client_token"] else {}
+    _verificar(requests.post(url, json={"phone": numero, "message": texto}, headers=headers, timeout=30))
 
 
-def _meta(numero: str, texto: str, aluno: dict) -> None:
-    url = f"https://graph.facebook.com/v21.0/{config.META_PHONE_ID}/messages"
-    if config.META_TEMPLATE:
+def _evolution(cfg: dict, numero: str, texto: str) -> None:
+    url = f"{cfg['evolution_url']}/message/sendText/{cfg['evolution_instancia']}"
+    _verificar(requests.post(url, json={"number": numero, "text": texto},
+                             headers={"apikey": cfg["evolution_apikey"]}, timeout=30))
+
+
+def _meta(cfg: dict, numero: str, texto: str, aluno: dict) -> None:
+    url = f"https://graph.facebook.com/v21.0/{cfg['meta_phone_id']}/messages"
+    if cfg["meta_template"]:
         # Template aprovado com 3 variáveis: {{1}} nome, {{2}} vencimento, {{3}} valor
         corpo = {
             "messaging_product": "whatsapp", "to": numero, "type": "template",
             "template": {
-                "name": config.META_TEMPLATE,
-                "language": {"code": config.META_TEMPLATE_IDIOMA},
+                "name": cfg["meta_template"],
+                "language": {"code": cfg["meta_template_idioma"]},
                 "components": [{"type": "body", "parameters": [
                     {"type": "text", "text": aluno["nome"].split()[0]},
                     {"type": "text", "text": data_br(aluno["data_vencimento"])},
@@ -180,27 +190,28 @@ def _meta(numero: str, texto: str, aluno: dict) -> None:
         }
     else:
         corpo = {"messaging_product": "whatsapp", "to": numero, "type": "text", "text": {"body": texto}}
-    r = requests.post(url, json=corpo, headers={"Authorization": f"Bearer {config.META_TOKEN}"}, timeout=30)
-    r.raise_for_status()
+    _verificar(requests.post(url, json=corpo, headers={"Authorization": f"Bearer {cfg['meta_token']}"}, timeout=30))
 
 
-def _twilio(numero: str, texto: str) -> None:
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{config.TWILIO_SID}/Messages.json"
-    dados = {"From": f"whatsapp:{config.TWILIO_NUMERO}", "To": f"whatsapp:+{numero}", "Body": texto}
-    r = requests.post(url, data=dados, auth=(config.TWILIO_SID, config.TWILIO_TOKEN), timeout=30)
-    r.raise_for_status()
+def _twilio(cfg: dict, numero: str, texto: str) -> None:
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{cfg['twilio_sid']}/Messages.json"
+    remetente = "+" + "".join(c for c in cfg["twilio_numero"] if c.isdigit())
+    dados = {"From": f"whatsapp:{remetente}", "To": f"whatsapp:+{numero}", "Body": texto}
+    _verificar(requests.post(url, data=dados, auth=(cfg["twilio_sid"], cfg["twilio_token"]), timeout=30))
 
 
 def enviar_whatsapp(numero: str, texto: str, aluno: dict) -> str:
-    provedor = config.WHATSAPP_PROVEDOR
+    """Retorna 'enviado' ou 'simulado'. Lança exceção em caso de erro."""
+    cfg = ajustes.whatsapp()
+    provedor = cfg["provedor"]
     if provedor == "zapi":
-        _zapi(numero, texto)
+        _zapi(cfg, numero, texto)
     elif provedor == "evolution":
-        _evolution(numero, texto)
+        _evolution(cfg, numero, texto)
     elif provedor == "meta":
-        _meta(numero, texto, aluno)
+        _meta(cfg, numero, texto, aluno)
     elif provedor == "twilio":
-        _twilio(numero, texto)
+        _twilio(cfg, numero, texto)
     else:
         return "simulado"
     return "enviado"

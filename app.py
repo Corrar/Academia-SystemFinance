@@ -340,7 +340,7 @@ def avisos():
         avisos=db.notificacoes_recentes(200),
         cfg={
             "email": "{host}:{porta}".format(**ajustes.smtp()) if ajustes.smtp()["host"] else None,
-            "whatsapp": config.WHATSAPP_PROVEDOR if config.WHATSAPP_PROVEDOR != "simulado" else None,
+            "whatsapp": NOMES_WHATSAPP[ajustes.whatsapp()["provedor"]] if ajustes.whatsapp()["provedor"] != "simulado" else None,
             "dias": config.DIAS_AVISO,
             "hora": config.HORA_COBRANCA,
         },
@@ -433,6 +433,18 @@ PRESETS_SMTP = {
 }
 
 
+NOMES_WHATSAPP = {"simulado": "Simulado", "zapi": "Z-API", "evolution": "Evolution API",
+                  "meta": "Meta Cloud API", "twilio": "Twilio"}
+# (chave, descrição, ícone, gradiente)
+PROVEDORES_WHATSAPP_TELA = [
+    ("simulado", "Só registra, não envia", "lock", "g-cinza"),
+    ("zapi", "Seu número via QR Code", "whatsapp", "g-verde"),
+    ("evolution", "Gratuito, servidor próprio", "settings", "g-teal"),
+    ("meta", "API oficial do WhatsApp", "building", "g-azul"),
+    ("twilio", "API oficial via Twilio", "send", "g-vermelho"),
+]
+
+
 def _aluno_exemplo() -> dict:
     return {"id": 0, "nome": "Aluno Exemplo", "plano_nome": "Mensal", "plano_valor": 120.0,
             "data_vencimento": (db.hoje() + timedelta(days=3)).isoformat()}
@@ -442,10 +454,11 @@ def _aluno_exemplo() -> dict:
 @login_obrigatorio
 def configuracoes():
     if request.method == "POST":
-        valores = {k: request.form.get(k, "") for k in ajustes.CAMPOS if k != "smtp_senha"}
-        # senha em branco = manter a atual
-        if request.form.get("smtp_senha"):
-            valores["smtp_senha"] = request.form["smtp_senha"]
+        valores = {k: request.form.get(k, "") for k in ajustes.CAMPOS if k not in ajustes.SECRETOS}
+        # senhas e tokens em branco = manter os atuais
+        valores.update({k: request.form[k] for k in ajustes.SECRETOS if request.form.get(k)})
+        if valores.get("wa_provedor") not in ajustes.PROVEDORES_WHATSAPP:
+            valores["wa_provedor"] = "simulado"
         if valores.get("smtp_porta") and not valores["smtp_porta"].isdigit():
             flash("A porta SMTP deve ser um número.", "erro")
             return redirect(url_for("configuracoes"))
@@ -453,8 +466,10 @@ def configuracoes():
         flash("Configurações salvas.", "ok")
         return redirect(url_for("configuracoes"))
     valores = {k: ajustes.obter(k) for k in ajustes.CAMPOS}
-    return render_template("configuracoes.html", v=valores, tem_senha=bool(valores.pop("smtp_senha")),
-                           presets=PRESETS_SMTP)
+    salvos = {k for k in ajustes.SECRETOS if valores.pop(k)}
+    valores["wa_provedor"] = ajustes.whatsapp()["provedor"]
+    return render_template("configuracoes.html", v=valores, salvos=salvos, presets=PRESETS_SMTP,
+                           provedores=PROVEDORES_WHATSAPP_TELA)
 
 
 @app.post("/configuracoes/teste-email")
@@ -476,6 +491,27 @@ def teste_email():
     else:
         flash(f"E-mail de teste enviado para {destino}. Confira a caixa de entrada (e o spam).", "ok")
     return redirect(url_for("configuracoes"))
+
+
+@app.post("/configuracoes/teste-whatsapp")
+@login_obrigatorio
+def teste_whatsapp():
+    numero = notificacoes.normalizar_telefone(request.form.get("numero"))
+    if len(numero) < 12:
+        flash("Informe um número de WhatsApp com DDD, ex.: (11) 99999-0000.", "erro")
+        return redirect(url_for("configuracoes") + "#whatsapp")
+    exemplo = _aluno_exemplo()
+    _, texto = notificacoes.montar_mensagem(exemplo)
+    try:
+        status = notificacoes.enviar_whatsapp(numero, "[TESTE]\n" + texto, exemplo)
+    except Exception as e:  # noqa: BLE001 - mostra o erro do provedor
+        flash(f"Falha ao enviar WhatsApp: {e}", "erro")
+        return redirect(url_for("configuracoes") + "#whatsapp")
+    if status == "simulado":
+        flash("WhatsApp em modo simulado: escolha um provedor, preencha os dados e salve antes de testar.", "erro")
+    else:
+        flash(f"Mensagem de teste enviada para +{numero}. Confira o WhatsApp.", "ok")
+    return redirect(url_for("configuracoes") + "#whatsapp")
 
 
 @app.route("/configuracoes/email-preview")
