@@ -264,9 +264,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1792577607.5448394,
-    "seen": 1792577693.1365445,
-    "ast_hash": "d53e9823f8f71da75f822a7b09f28416",
+    "mtime": 1792577818.9887967,
+    "seen": 1792578193.199057,
+    "ast_hash": "5b8e05d36a10db168edfd311b229924e",
     "semantic_hash": ""
   },
   "static/interface.js": {
@@ -324,9 +324,9 @@
     "semantic_hash": ""
   },
   "versao.py": {
-    "mtime": 1792576975.7001088,
-    "seen": 1792577693.1365361,
-    "ast_hash": "f53a9a6b204808f329eebdf3d7b37433",
+    "mtime": 1792577793.1038888,
+    "seen": 1792578193.1990433,
+    "ast_hash": "e7f0c95eb61fbcc6bf2624955a1c426d",
     "semantic_hash": ""
   },
   ".github/dependabot.yml": {
@@ -342,9 +342,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/release.yml": {
-    "mtime": 1792577280.7840474,
-    "seen": 1792577693.1365407,
-    "ast_hash": "e3ff8e15e3c166b8842223d942a5ca9b",
+    "mtime": 1792577798.8901186,
+    "seen": 1792578193.1990523,
+    "ast_hash": "12a127ac5b5d7b3c53c6bac6525ceea3",
     "semantic_hash": ""
   },
   ".github/workflows/testes.yml": {
@@ -375,6 +375,12 @@
     "mtime": 1792577122.3878489,
     "seen": 1792577693.136583,
     "ast_hash": "0d29c668c4e2fcf1abfa947651b7ca55",
+    "semantic_hash": ""
+  },
+  ".github/releases-anteriores.txt": {
+    "mtime": 1792577789.6438885,
+    "seen": 1792578193.199049,
+    "ast_hash": "49fdba51033a34acc73000c245645785",
     "semantic_hash": ""
   }
 }

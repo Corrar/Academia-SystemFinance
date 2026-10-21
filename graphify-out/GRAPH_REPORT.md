@@ -1,7 +1,7 @@
 # Graph Report - academia-systemfinance  (2026-10-21)
 
 ## Corpus Check
-- 27 files · ~45,656 words
+- 27 files · ~45,785 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 5, .css 2, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f174a0f9`
+- Built from commit: `29c5e290`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
