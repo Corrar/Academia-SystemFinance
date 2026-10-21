@@ -4,20 +4,29 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Entrar · {{ academia }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <div class="login-pg">
-  <form method="post" class="card">
-    <h1>🏋️ {{ academia }}</h1>
-    <p class="sub">Acesso ao painel de mensalidades</p>
+  <form method="post" class="login-box">
+    <div class="logo"><span class="logo-mark"></span><span>{{ academia }}</span></div>
+    <div class="hero" style="margin-bottom:22px">
+      <div class="saudacao">Bem-vindo de volta 👋</div>
+      <h1>Acesse o painel</h1>
+      <p class="sub">Controle de mensalistas e cobranças</p>
+    </div>
     {% for cat, msg in get_flashed_messages(with_categories=true) %}
-      <div class="flash {{ cat }}">{{ msg }}</div>
+      <div class="flash {{ cat }}">{{ icone('alert', 17) }} {{ msg }}</div>
     {% endfor %}
-    <input type="hidden" name="csrf" value="{{ csrf_token }}">
-    <div class="campo"><label>Usuário</label><input name="usuario" required autofocus></div>
-    <div class="campo" style="margin-top:12px"><label>Senha</label><input name="senha" type="password" required></div>
-    <div class="linha-botoes"><button class="btn primario" style="width:100%;justify-content:center">Entrar</button></div>
+    <div class="card">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <div class="campo"><label for="usuario">Usuário</label><input id="usuario" name="usuario" required autofocus autocomplete="username"></div>
+      <div class="campo" style="margin-top:14px"><label for="senha">Senha</label><input id="senha" name="senha" type="password" required autocomplete="current-password"></div>
+      <div class="linha-botoes"><button class="btn primario bloco">Entrar {{ icone('arrow-right', 16) }}</button></div>
+    </div>
   </form>
 </div>
 </body>

@@ -1,46 +1,36 @@
 {% extends "base.html" %}
+{% from "_componentes.html" import card_aluno with context %}
 {% block titulo %}Inscritos{% endblock %}
 {% block conteudo %}
-<div class="topo">
+<div class="cabeca">
   <div>
     <h1>Inscritos</h1>
-    <p class="sub">{{ alunos|length }} aluno(s) encontrado(s)</p>
+    <p class="sub">Consulte os mensalistas, a situação e a validade de cada plano.</p>
   </div>
-  <a class="btn primario" href="{{ url_for('aluno_novo') }}">+ Novo aluno</a>
+  <a class="btn primario" href="{{ url_for('aluno_novo') }}">{{ icone('plus', 16) }} Novo aluno</a>
 </div>
 
-<form class="filtros" method="get">
-  <input type="search" name="q" value="{{ termo }}" placeholder="Buscar por nome, CPF, telefone ou e-mail…" autofocus>
-  <select name="status" onchange="this.form.submit()">
-    <option value="">Todas as situações</option>
-    {% for k, v in STATUS_ROTULO.items() %}
-      <option value="{{ k }}" {{ 'selected' if status == k }}>{{ v }}</option>
-    {% endfor %}
-  </select>
-  <button class="btn">Buscar</button>
+<form class="barra-busca" method="get">
+  <label class="busca" aria-label="Buscar">
+    {{ icone('search', 17) }}
+    <input type="search" name="q" value="{{ termo }}" placeholder="Buscar por nome, CPF, telefone ou e-mail…">
+  </label>
+  {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+  <span class="contador" style="margin-left:auto">{{ alunos|length }} de {{ total }} alunos</span>
 </form>
 
-<div class="card" style="padding:6px 12px">
-  <div class="tabela-wrap">
-  <table>
-    <thead><tr><th>Nome</th><th>CPF</th><th>WhatsApp</th><th>Plano</th><th>Validade</th><th class="num">Dias</th><th>Situação</th></tr></thead>
-    <tbody>
-    {% for a in alunos %}
-      <tr>
-        <td><a href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}"><strong>{{ a.nome }}</strong></a></td>
-        <td>{{ a.cpf or '-' }}</td>
-        <td>{{ a.telefone or '-' }}</td>
-        <td>{{ a.plano_nome or '-' }}{% if a.plano_valor %} <span style="color:var(--suave)">· {{ a.plano_valor|moeda }}</span>{% endif %}</td>
-        <td>{{ a.data_vencimento|data_br }}</td>
-        <td class="num {{ 'atraso' if a.dias < 0 and a.ativo }}">{{ a.dias }}</td>
-        <td><span class="tag {{ a.status }}">{{ STATUS_ROTULO[a.status] }}</span></td>
-      </tr>
-    {% else %}
-      <tr><td colspan="7" class="vazio">Nenhum aluno encontrado.</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  </div>
+<div class="filtros" style="margin-bottom:18px">
+  <a class="filtro {{ 'ativo' if not status }}" href="{{ url_for('alunos', q=termo or None) }}">Todos <b>{{ total }}</b></a>
+  {% for k, v in STATUS_ROTULO.items() %}
+    <a class="filtro {{ 'ativo' if status == k }}" href="{{ url_for('alunos', q=termo or None, status=k) }}">{{ v }} <b>{{ contagem[k] }}</b></a>
+  {% endfor %}
 </div>
-<p class="sub" style="font-size:13px">Dias: positivo = dias restantes até o vencimento · negativo = dias em atraso.</p>
+
+<div class="cards">
+  {% for a in alunos %}
+    {{ card_aluno(a, csrf_token) }}
+  {% else %}
+    <div class="vazio">Nenhum aluno encontrado.</div>
+  {% endfor %}
+</div>
 {% endblock %}

@@ -6,9 +6,14 @@ from email.message import EmailMessage
 from urllib.parse import quote
 
 import requests
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+import ajustes
 import config
 import db
+
+_jinja = Environment(loader=FileSystemLoader(str(config.BASE_DIR / "templates")),
+                     autoescape=select_autoescape(["html"]))
 
 
 # ---------------------------------------------------------------- formatação
@@ -48,7 +53,7 @@ def montar_mensagem(aluno: dict) -> tuple[str, str]:
     primeiro_nome = aluno["nome"].split()[0]
     venc = data_br(aluno["data_vencimento"])
     valor = moeda(aluno.get("plano_valor"))
-    academia = config.ACADEMIA_NOME
+    academia = ajustes.obter("academia_nome")
 
     if dias > 0:
         assunto = f"{academia}: sua mensalidade vence em {dias} dia(s)"
@@ -73,12 +78,35 @@ def montar_mensagem(aluno: dict) -> tuple[str, str]:
             "Regularize para continuar treinando sem interrupções."
         )
 
-    if config.CHAVE_PIX:
-        texto += f"\n\nPague via PIX: {config.CHAVE_PIX}"
+    pix, telefone = ajustes.obter("chave_pix"), ajustes.obter("academia_telefone")
+    if pix:
+        texto += f"\n\nPague via PIX: {pix}"
     texto += "\n\nSe já pagou, por favor desconsidere esta mensagem."
-    if config.ACADEMIA_TELEFONE:
-        texto += f"\nDúvidas: {config.ACADEMIA_TELEFONE}"
+    if telefone:
+        texto += f"\nDúvidas: {telefone}"
     return assunto, texto
+
+
+def montar_email_html(aluno: dict) -> str:
+    """Versão em HTML do aviso, no mesmo visual do painel."""
+    dias = db.dias_para_vencer(aluno["data_vencimento"])
+    if dias > 0:
+        tom, rotulo, detalhe = "azul", "Vence em breve", f"Faltam {dias} dia(s) para o vencimento"
+    elif dias == 0:
+        tom, rotulo, detalhe = "amarelo", "Vence hoje", "Último dia para pagar sem atraso"
+    else:
+        tom, rotulo, detalhe = "vermelho", "Mensalidade em atraso", f"Em aberto há {-dias} dia(s)"
+    return _jinja.get_template("email_aviso.html").render(
+        aluno=aluno,
+        primeiro_nome=aluno["nome"].split()[0],
+        academia=ajustes.obter("academia_nome"),
+        telefone=ajustes.obter("academia_telefone"),
+        pix=ajustes.obter("chave_pix"),
+        vencimento=data_br(aluno["data_vencimento"]),
+        valor=moeda(aluno.get("plano_valor")),
+        plano=aluno.get("plano_nome") or "Mensalidade",
+        tom=tom, rotulo=rotulo, detalhe=detalhe, dias=dias,
+    )
 
 
 def link_whatsapp(aluno: dict) -> str | None:
@@ -92,27 +120,29 @@ def link_whatsapp(aluno: dict) -> str | None:
 
 # ---------------------------------------------------------------- e-mail
 
-def enviar_email(destino: str, assunto: str, texto: str) -> str:
-    """Retorna 'enviado' ou 'simulado'. Lança exceção em caso de erro."""
-    if not config.SMTP_HOST:
+def enviar_email(destino: str, assunto: str, texto: str, html: str | None = None) -> str:
+    """Retorna 'enviado' ou 'simulado' (SMTP não configurado). Lança exceção em caso de erro."""
+    cfg = ajustes.smtp()
+    if not cfg["host"]:
         return "simulado"
     msg = EmailMessage()
-    msg["From"] = f"{config.ACADEMIA_NOME} <{config.SMTP_REMETENTE}>"
+    msg["From"] = f"{ajustes.obter('academia_nome')} <{cfg['remetente']}>"
     msg["To"] = destino
     msg["Subject"] = assunto
     msg.set_content(texto.replace("*", ""))
+    if html:
+        msg.add_alternative(html, subtype="html")
     contexto = ssl.create_default_context()
-    if config.SMTP_SEGURANCA == "ssl":
-        with smtplib.SMTP_SSL(config.SMTP_HOST, config.SMTP_PORTA, context=contexto, timeout=30) as s:
-            if config.SMTP_USUARIO:
-                s.login(config.SMTP_USUARIO, config.SMTP_SENHA)
-            s.send_message(msg)
+    if cfg["seguranca"] == "ssl":
+        servidor = smtplib.SMTP_SSL(cfg["host"], cfg["porta"], context=contexto, timeout=30)
     else:
-        with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORTA, timeout=30) as s:
+        servidor = smtplib.SMTP(cfg["host"], cfg["porta"], timeout=30)
+    with servidor as s:
+        if cfg["seguranca"] == "tls":
             s.starttls(context=contexto)
-            if config.SMTP_USUARIO:
-                s.login(config.SMTP_USUARIO, config.SMTP_SENHA)
-            s.send_message(msg)
+        if cfg["usuario"]:
+            s.login(cfg["usuario"], cfg["senha"])
+        s.send_message(msg)
     return "enviado"
 
 
@@ -209,7 +239,7 @@ def notificar(aluno: dict, canais=("email", "whatsapp"), chave: str | None = Non
             continue
         if canal == "email":
             destino = (aluno.get("email") or "").strip()
-            enviar = lambda: enviar_email(destino, assunto, texto)
+            enviar = lambda: enviar_email(destino, assunto, texto, montar_email_html(aluno))
         else:
             destino = normalizar_telefone(aluno.get("telefone"))
             enviar = lambda: enviar_whatsapp(destino, texto, aluno)

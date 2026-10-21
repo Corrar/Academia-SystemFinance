@@ -120,8 +120,28 @@ def _enriquecer(linhas):
         d = dict(r)
         d["dias"] = dias_para_vencer(d["data_vencimento"])
         d["status"] = status_aluno(d)
+        # progresso do ciclo atual (0 a 100%), usado na barra dos cards
+        duracao = d.get("plano_duracao") or 30
+        d["ciclo_pct"] = max(0, min(100, round((duracao - d["dias"]) / duracao * 100)))
+        d["inicio_ciclo"] = (date.fromisoformat(d["data_vencimento"]) - timedelta(days=duracao)).isoformat()
         lista.append(d)
     return lista
+
+
+def avisos_do_ciclo(alunos: list[dict]) -> None:
+    """Preenche `avisos_enviados` (dias relativos já avisados no vencimento atual)."""
+    if not alunos:
+        return
+    marcadores = ",".join("?" * len(alunos))
+    with conectar() as con:
+        linhas = con.execute(
+            f"SELECT DISTINCT aluno_id, chave FROM notificacoes WHERE aluno_id IN ({marcadores}) "
+            "AND chave IS NOT NULL AND status IN ('enviado','simulado')",
+            [a["id"] for a in alunos],
+        ).fetchall()
+    for a in alunos:
+        prefixo = a["data_vencimento"] + ":"
+        a["avisos_enviados"] = {int(c[len(prefixo):]) for i, c in linhas if i == a["id"] and c.startswith(prefixo)}
 
 
 # ---------------------------------------------------------------- consultas

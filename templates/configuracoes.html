@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block titulo %}Configurações{% endblock %}
+{% block conteudo %}
+<div class="cabeca">
+  <div>
+    <h1>Configurações</h1>
+    <p class="sub">Dados da academia e servidor de e-mail usado nos avisos de vencimento.</p>
+  </div>
+  <a class="btn" href="{{ url_for('email_preview') }}" target="_blank">{{ icone('eye', 15) }} Ver modelo do e-mail</a>
+</div>
+
+<form method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+  <section class="card">
+    <div class="card-titulo"><span class="ico p g-indigo">{{ icone('building', 17) }}</span><div><h2>Academia</h2><p class="sub">aparece nos e-mails e mensagens de WhatsApp</p></div></div>
+    <div class="form-grid">
+      <div class="campo"><label>Nome da academia</label><input name="academia_nome" value="{{ v.academia_nome }}" required></div>
+      <div class="campo"><label>Telefone para dúvidas</label><input name="academia_telefone" value="{{ v.academia_telefone }}" placeholder="(11) 99999-0000"></div>
+      <div class="campo"><label>Chave PIX</label><input name="chave_pix" value="{{ v.chave_pix }}" placeholder="CNPJ, e-mail, telefone ou chave aleatória"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-titulo">
+      <span class="ico p g-azul">{{ icone('mail', 17) }}</span>
+      <div><h2>Envio por e-mail (SMTP)</h2><p class="sub">{% if v.smtp_host %}<span class="pill verde">{{ icone('check', 11) }} Configurado</span>{% else %}<span class="pill">{{ icone('lock', 11) }} Modo simulado</span>{% endif %}</p></div>
+    </div>
+
+    <label style="display:block;margin-bottom:8px">Seu provedor</label>
+    <div class="presets">
+      {% for nome, (host, porta, seg) in presets.items() %}
+        <button type="button" class="filtro {{ 'ativo' if v.smtp_host == host }}" data-host="{{ host }}" data-porta="{{ porta }}" data-seg="{{ seg }}">{{ nome }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="form-grid">
+      <div class="campo"><label>Servidor SMTP</label><input name="smtp_host" id="smtp_host" value="{{ v.smtp_host }}" placeholder="smtp.gmail.com"></div>
+      <div class="campo"><label>Porta</label><input name="smtp_porta" id="smtp_porta" value="{{ v.smtp_porta }}" inputmode="numeric" placeholder="587"></div>
+      <div class="campo"><label>Segurança</label>
+        <select name="smtp_seguranca" id="smtp_seguranca">
+          <option value="tls" {{ 'selected' if v.smtp_seguranca != 'ssl' }}>TLS / STARTTLS (porta 587)</option>
+          <option value="ssl" {{ 'selected' if v.smtp_seguranca == 'ssl' }}>SSL (porta 465)</option>
+        </select>
+      </div>
+      <div class="campo"><label>Usuário (e-mail de login)</label><input name="smtp_usuario" value="{{ v.smtp_usuario }}" placeholder="financeiro@suaacademia.com.br" autocomplete="off"></div>
+      <div class="campo">
+        <label>Senha {% if tem_senha %}<span class="ajuda">· salva (deixe em branco para manter)</span>{% endif %}</label>
+        <input name="smtp_senha" type="password" placeholder="{{ '••••••••' if tem_senha else 'Senha de app' }}" autocomplete="new-password">
+      </div>
+      <div class="campo"><label>Remetente <span class="ajuda">· opcional</span></label><input name="smtp_remetente" value="{{ v.smtp_remetente }}" placeholder="igual ao usuário"></div>
+    </div>
+
+    <div class="info" style="margin-top:16px">{{ icone('lock', 16) }}<div>
+      <strong>Gmail:</strong> ative a verificação em duas etapas e gere uma <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">senha de app</a>.
+      Use essa senha de 16 letras aqui, não a senha normal da conta.
+      <strong>Outlook/Hotmail:</strong> contas pessoais podem exigir senha de app em <a href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noopener">account.live.com</a>.
+    </div></div>
+  </section>
+
+  <div class="linha-botoes"><button class="btn primario">{{ icone('check', 15) }} Salvar configurações</button></div>
+</form>
+
+<form method="post" action="{{ url_for('teste_email') }}" class="card" style="margin-top:18px">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <div class="card-titulo"><span class="ico p g-verde">{{ icone('send', 17) }}</span><div><h2>Enviar e-mail de teste</h2><p class="sub">salve as configurações antes de testar</p></div></div>
+  <div class="barra-busca" style="margin:0">
+    <label class="busca" style="max-width:380px">{{ icone('mail', 16) }}<input type="email" name="destino" placeholder="seu@email.com" value="{{ v.smtp_usuario }}" required></label>
+    <button class="btn primario">{{ icone('send', 15) }} Enviar teste</button>
+  </div>
+</form>
+
+<script>
+  document.querySelectorAll('.presets [data-host]').forEach(b => b.addEventListener('click', () => {
+    document.getElementById('smtp_host').value = b.dataset.host;
+    document.getElementById('smtp_porta').value = b.dataset.porta;
+    document.getElementById('smtp_seguranca').value = b.dataset.seg;
+    document.querySelectorAll('.presets [data-host]').forEach(x => x.classList.toggle('ativo', x === b));
+  }));
+</script>
+{% endblock %}

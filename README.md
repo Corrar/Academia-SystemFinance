@@ -17,6 +17,7 @@ computador (Windows, Mac ou Linux) ou servidor.
 | **Financeiro** | Pagamentos de qualquer mês, total recebido, ticket médio e total por forma de pagamento |
 | **Avisos e cobrança** | Histórico de todos os avisos enviados, status do e-mail e WhatsApp, e botão "Executar cobrança agora" |
 | **Planos** | Mensal, trimestral, semestral… (valor e duração em dias) |
+| **Configurações** | Nome da academia, telefone, chave PIX e **servidor de e-mail** (com atalhos para Gmail, Outlook, Hostinger, Locaweb, Zoho), botão de **e-mail de teste** e pré-visualização do e-mail |
 
 ### Como funciona a cobrança automática
 
@@ -57,19 +58,23 @@ Acesse **http://localhost:5000**. Usuário e senha padrão: `admin` / `admin123`
 Enquanto e-mail e WhatsApp não estiverem configurados, o sistema funciona em **modo simulado**:
 as mensagens aparecem no histórico de avisos, mas nada é enviado. Dá para testar tudo com segurança.
 
-### E-mail (SMTP)
+### E-mail
 
-Exemplo com **Gmail** (crie uma "Senha de app" em https://myaccount.google.com/apppasswords):
+Pelo próprio sistema: menu **Configurações → Envio por e-mail (SMTP)**.
 
-```ini
-SMTP_HOST=smtp.gmail.com
-SMTP_PORTA=587
-SMTP_USUARIO=suaacademia@gmail.com
-SMTP_SENHA=xxxx xxxx xxxx xxxx
-SMTP_SEGURANCA=tls
-```
+1. Clique no seu provedor (Gmail, Outlook, Hostinger…) para preencher servidor, porta e segurança.
+2. Informe o e-mail de login e a senha.
+   - **Gmail**: ative a verificação em duas etapas e gere uma **senha de app** em
+     https://myaccount.google.com/apppasswords. Use essa senha de 16 letras, não a senha normal.
+   - **Outlook/Hotmail**: contas pessoais podem exigir senha de app.
+3. Salve e use **Enviar e-mail de teste** para confirmar.
 
-Também funciona com Outlook (`smtp.office365.com`), Hostinger, Locaweb, Brevo, SendGrid etc.
+Os avisos saem em HTML no mesmo visual do painel (com valor, vencimento e chave PIX) e também em
+texto simples. Use **Ver modelo do e-mail** para conferir antes.
+
+> Também dá para configurar pelo `.env` (`SMTP_HOST`, `SMTP_PORTA`, `SMTP_USUARIO`, `SMTP_SENHA`,
+> `SMTP_SEGURANCA`). O que for salvo na tela de Configurações tem prioridade.
+> A senha fica guardada no arquivo `academia.db`: mantenha esse arquivo protegido.
 
 ### WhatsApp
 
@@ -113,10 +118,12 @@ academia/
 ├── app.py            # rotas e telas (Flask)
 ├── db.py             # banco SQLite, consultas e indicadores
 ├── notificacoes.py   # mensagens, envio por e-mail e WhatsApp
+├── ajustes.py        # configurações editáveis pela tela (sobrepõem o .env)
+├── icones.py         # ícones SVG das telas
 ├── cobranca.py       # rotina diária de cobrança automática
 ├── config.py         # leitura do .env
 ├── seed.py           # dados de exemplo
-├── templates/        # páginas HTML
+├── templates/        # páginas HTML (+ email_aviso.html, modelo do e-mail)
 └── static/style.css
 ```
 

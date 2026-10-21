@@ -1,0 +1,98 @@
+{# Componentes visuais reutilizados nas telas #}
+
+{% macro legenda(a) -%}
+  {%- if a.status == 'inativo' -%}matrícula cancelada
+  {%- elif a.dias > 1 -%}vence em {{ a.dias }} dias · {{ a.data_vencimento|data_br }}
+  {%- elif a.dias == 1 -%}vence amanhã · {{ a.data_vencimento|data_br }}
+  {%- elif a.dias == 0 -%}vence hoje
+  {%- else -%}venceu em {{ a.data_vencimento|data_br }} · {{ -a.dias }}d
+  {%- endif -%}
+{%- endmacro %}
+
+{# Card de aluno no estilo "viagem": faixa de status, nome, chips, trilha do ciclo e rodapé #}
+{% macro card_aluno(a, csrf_token) %}
+{% set tom, ic = TONS[a.status] %}
+{% set realce = {'a_vencer': 'realce-azul', 'vencido': 'realce-laranja', 'inadimplente': 'realce-vermelho'}.get(a.status, '') %}
+<article class="tcard t-{{ tom }} {{ realce }}">
+  <div class="tcard-head">
+    <span class="mini">{{ icone(ic, 15) }}</span>
+    <div><strong>{{ STATUS_ROTULO[a.status] }}</strong><small>{{ legenda(a) }}</small></div>
+  </div>
+  <div class="tcard-body">
+    <a class="tcard-nome" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">{{ icone('user', 15) }} {{ a.nome }}</a>
+    <div class="chips">
+      <span class="chip">{{ icone('tag', 12) }} {{ a.plano_nome or 'Sem plano' }}</span>
+      {% if a.telefone %}<span class="chip">{{ icone('phone', 12) }} {{ a.telefone }}</span>{% endif %}
+    </div>
+    {% if a.status != 'inativo' %}
+    <div class="trilha {{ tom }}">
+      <span class="barra" style="width: calc((100% - 24px) * {{ a.ciclo_pct / 100 }})"></span>
+      <span class="no cheio {{ 'verde' if tom == 'verde' }}" title="Início do ciclo">{{ icone('calendar', 12) }}</span>
+      {% if a.dias < 0 %}
+        <span class="no vermelho" title="Vencido">{{ icone('alert', 12) }}</span>
+      {% else %}
+        <span class="no" title="Vencimento">{{ icone('check', 12) }}</span>
+      {% endif %}
+    </div>
+    <div class="etapas"><span>{{ a.inicio_ciclo[8:10] }}/{{ a.inicio_ciclo[5:7] }}</span><span>{{ a.data_vencimento[8:10] }}/{{ a.data_vencimento[5:7] }}</span></div>
+    {% endif %}
+  </div>
+  <div class="tcard-foot">
+    <div class="metricas">
+      <div class="metrica"><div class="rot">Validade</div><div class="val">{{ a.data_vencimento|data_br }}</div></div>
+      {% if a.ativo %}
+      <div class="metrica">
+        <div class="rot">{{ 'Atraso' if a.dias < 0 else 'Faltam' }}</div>
+        <div class="val {{ 'vermelho' if a.status == 'inadimplente' else ('laranja' if a.dias < 0 else ('amarelo' if a.dias <= 7 else 'verde')) }}">{{ a.dias|abs }}d</div>
+      </div>
+      {% endif %}
+    </div>
+    <a class="link-det" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">Ver detalhes {{ icone('chevron-right', 14) }}</a>
+  </div>
+</article>
+{% endmacro %}
+
+{# Card de inadimplente: trilha com as etapas de aviso automático já enviadas #}
+{% macro card_inadimplente(a, csrf_token, voltar) %}
+{% set enviados = a.avisos_enviados or [] %}
+{% set feitos = DIAS_AVISO|select('in', enviados)|list %}
+{% set ultimo = (DIAS_AVISO|list).index(feitos[-1]) if feitos else -1 %}
+<article class="tcard t-vermelho realce-vermelho">
+  <div class="tcard-head">
+    <span class="mini">{{ icone('alert', 15) }}</span>
+    <div><strong>{{ -a.dias }} dias em atraso</strong><small>venceu em {{ a.data_vencimento|data_br }} · {{ enviados|length }} aviso(s) enviado(s)</small></div>
+  </div>
+  <div class="tcard-body">
+    <a class="tcard-nome" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">{{ icone('user', 15) }} {{ a.nome }}</a>
+    <div class="chips">
+      <span class="chip">{{ icone('tag', 12) }} {{ a.plano_nome or 'Sem plano' }}</span>
+      {% if a.telefone %}<span class="chip">{{ icone('phone', 12) }} {{ a.telefone }}</span>{% endif %}
+    </div>
+    <div class="trilha">
+      {% if DIAS_AVISO|length > 1 and ultimo > 0 %}
+      <span class="barra" style="width: calc((100% - 24px) * {{ ultimo / (DIAS_AVISO|length - 1) }})"></span>
+      {% endif %}
+      {% for d in DIAS_AVISO %}
+        <span class="no {{ 'cheio' if d in enviados }}" title="Aviso {{ 'no vencimento' if d == 0 else ('%+d dia(s)'|format(d)) }}: {{ 'enviado' if d in enviados else 'não enviado' }}">
+          {{ icone('check' if d in enviados else 'bell', 12) }}
+        </span>
+      {% endfor %}
+    </div>
+    <div class="etapas">{% for d in DIAS_AVISO %}<span>{{ 'venc.' if d == 0 else '%+dd'|format(d) }}</span>{% endfor %}</div>
+  </div>
+  <div class="tcard-foot">
+    <div class="metrica"><div class="rot">Em aberto</div><div class="val vermelho">{{ a.plano_valor|moeda }}</div></div>
+    <div class="acoes">
+      {% for canal, ic, ok in [('email', 'mail', a.email), ('whatsapp', 'whatsapp', a.telefone)] %}
+      <form method="post" action="{{ url_for('avisar_aluno', aluno_id=a.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="canal" value="{{ canal }}">
+        <input type="hidden" name="voltar" value="{{ voltar }}">
+        <button class="btn sm quadrado {{ 'whats' if canal == 'whatsapp' }}" {{ 'disabled' if not ok }} title="Enviar aviso por {{ 'e-mail' if canal == 'email' else 'WhatsApp' }}">{{ icone(ic, 15) }}</button>
+      </form>
+      {% endfor %}
+      <a class="btn sm primario" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}#pagamento">Receber</a>
+    </div>
+  </div>
+</article>
+{% endmacro %}

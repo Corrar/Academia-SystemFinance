@@ -1,25 +1,32 @@
 {% extends "base.html" %}
 {% block titulo %}Financeiro{% endblock %}
 {% block conteudo %}
-<div class="topo">
+<div class="cabeca">
   <div>
     <h1>Financeiro</h1>
-    <p class="sub">Pagamentos recebidos no mês</p>
+    <p class="sub">Pagamentos recebidos em <b>{{ mes|mes_curto }}</b></p>
   </div>
-  <form method="get" class="filtros" style="margin:0">
-    <input type="month" name="mes" value="{{ mes }}" onchange="this.form.submit()">
-  </form>
+  <form method="get"><input type="month" name="mes" value="{{ mes }}" onchange="this.form.submit()" style="width:190px" aria-label="Mês"></form>
 </div>
 
-<div class="kpis">
-  <div class="kpi"><div class="rotulo">Total recebido em {{ mes|mes_curto }}</div><div class="valor">{{ total|moeda }}</div></div>
-  <div class="kpi"><div class="rotulo">Pagamentos</div><div class="valor">{{ pagamentos|length }}</div></div>
-  <div class="kpi"><div class="rotulo">Ticket médio</div><div class="valor">{{ (total / pagamentos|length if pagamentos else 0)|moeda }}</div></div>
+<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi">
+    <div class="topo-kpi"><span class="ico g-teal">{{ icone('wallet', 20) }}</span></div>
+    <div class="valor">{{ total|moeda }}</div><div class="rotulo">Total recebido</div><div class="det">no mês selecionado</div>
+  </div>
+  <div class="kpi">
+    <div class="topo-kpi"><span class="ico g-azul">{{ icone('receipt', 20) }}</span></div>
+    <div class="valor">{{ pagamentos|length }}</div><div class="rotulo">Pagamentos</div><div class="det">lançamentos no mês</div>
+  </div>
+  <div class="kpi">
+    <div class="topo-kpi"><span class="ico g-violeta">{{ icone('dollar', 20) }}</span></div>
+    <div class="valor">{{ (total / pagamentos|length if pagamentos else 0)|moeda }}</div><div class="rotulo">Ticket médio</div><div class="det">valor médio por pagamento</div>
+  </div>
 </div>
 
-<div class="grid-2" style="grid-template-columns: 2fr 1fr">
-  <div class="card">
-    <h2>Lançamentos</h2>
+<div class="grade-21" style="margin-top:18px">
+  <section class="card">
+    <div class="card-titulo"><span class="ico p g-azul">{{ icone('receipt', 17) }}</span><div><h2>Lançamentos</h2><p class="sub">{{ pagamentos|length }} pagamento(s)</p></div></div>
     <div class="tabela-wrap">
     <table>
       <thead><tr><th>Data</th><th>Aluno</th><th>Forma</th><th class="num">Valor</th></tr></thead>
@@ -27,9 +34,9 @@
       {% for p in pagamentos %}
         <tr>
           <td>{{ p.data_pagamento|data_br }}</td>
-          <td><a href="{{ url_for('aluno_detalhe', aluno_id=p.aluno_id) }}">{{ p.nome }}</a></td>
-          <td>{{ p.forma or '-' }}</td>
-          <td class="num">{{ p.valor|moeda }}</td>
+          <td><a href="{{ url_for('aluno_detalhe', aluno_id=p.aluno_id) }}"><strong>{{ p.nome }}</strong></a></td>
+          <td><span class="chip">{{ p.forma or '-' }}</span></td>
+          <td class="num"><strong>{{ p.valor|moeda }}</strong></td>
         </tr>
       {% else %}
         <tr><td colspan="4" class="vazio">Nenhum pagamento neste mês.</td></tr>
@@ -37,18 +44,21 @@
       </tbody>
     </table>
     </div>
-  </div>
-  <div class="card">
-    <h2>Por forma de pagamento</h2>
-    <table>
-      <tbody>
+  </section>
+  <section class="card" style="align-self:start">
+    <div class="card-titulo"><span class="ico p g-laranja">{{ icone('wallet', 17) }}</span><div><h2>Por forma</h2><p class="sub">participação no total</p></div></div>
+    <ul class="lista">
       {% for forma, valor in por_forma %}
-        <tr><td>{{ forma }}</td><td class="num">{{ valor|moeda }}</td></tr>
+      <li>
+        <div class="grow">
+          <div style="display:flex;justify-content:space-between;gap:8px"><strong>{{ forma }}</strong><span class="num" style="font-weight:800;font-size:13px">{{ valor|moeda }}</span></div>
+          <div class="barra-h"><span style="width: {{ (valor / total * 100)|round(1) }}%"></span></div>
+        </div>
+      </li>
       {% else %}
-        <tr><td class="vazio">—</td></tr>
+      <li class="vazio" style="justify-content:center">—</li>
       {% endfor %}
-      </tbody>
-    </table>
-  </div>
+    </ul>
+  </section>
 </div>
 {% endblock %}

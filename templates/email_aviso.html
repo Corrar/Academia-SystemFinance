@@ -1,0 +1,102 @@
+{%- set cores = {
+  'azul': {'fundo': '#eef3ff', 'icone': '#dce6ff', 'texto': '#2457e6', 'borda': '#2457e6'},
+  'amarelo': {'fundo': '#fff7e8', 'icone': '#ffe9c2', 'texto': '#b45309', 'borda': '#f59e0b'},
+  'vermelho': {'fundo': '#fef2f2', 'icone': '#fde0e0', 'texto': '#dc2626', 'borda': '#ef4444'},
+}[tom] -%}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ rotulo }} · {{ academia }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f6f8;font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6f8;padding:32px 12px;">
+<tr><td align="center">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+
+    <!-- marca -->
+    <tr><td style="padding:0 4px 18px;">
+      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+        <td style="width:34px;height:34px;border-radius:50%;border:2.5px solid #1e1b6b;text-align:center;vertical-align:middle;">
+          <div style="width:14px;height:14px;border-radius:50%;background:#facc15;margin:0 auto;"></div>
+        </td>
+        <td style="padding-left:10px;font-weight:800;font-size:15px;color:#0f172a;">{{ academia }}</td>
+      </tr></table>
+    </td></tr>
+
+    <!-- card -->
+    <tr><td style="background:#ffffff;border:1.5px solid {{ cores.borda }};border-radius:16px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <!-- faixa de status -->
+        <tr><td style="background:{{ cores.fundo }};padding:14px 20px;border-radius:14px 14px 0 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="width:32px;height:32px;border-radius:9px;background:{{ cores.icone }};text-align:center;vertical-align:middle;font-size:15px;color:{{ cores.texto }};">
+              {% if dias < 0 %}!{% else %}&#128197;{% endif %}
+            </td>
+            <td style="padding-left:12px;">
+              <div style="font-weight:800;font-size:14px;color:#0f172a;">{{ rotulo }}</div>
+              <div style="font-size:12px;color:#64748b;">{{ detalhe }}</div>
+            </td>
+          </tr></table>
+        </td></tr>
+
+        <!-- corpo -->
+        <tr><td style="padding:22px 20px 6px;">
+          <div style="font-size:13px;font-weight:700;color:#1e1b6b;margin-bottom:4px;">Olá, {{ primeiro_nome }} &#128075;</div>
+          <div style="font-size:20px;font-weight:800;letter-spacing:-0.02em;line-height:1.25;margin-bottom:10px;">
+            {% if dias > 0 %}Sua mensalidade vence em {{ dias }} dia(s){% elif dias == 0 %}Sua mensalidade vence hoje{% else %}Sua mensalidade está em atraso{% endif %}
+          </div>
+          <div style="font-size:14px;color:#475569;line-height:1.55;">
+            {% if dias < 0 %}
+              Identificamos que a mensalidade do seu plano venceu em <strong>{{ vencimento }}</strong>. Regularize para continuar treinando sem interrupções.
+            {% else %}
+              Passando para lembrar que a mensalidade do seu plano vence em <strong>{{ vencimento }}</strong>.
+            {% endif %}
+          </div>
+        </td></tr>
+
+        <!-- chips -->
+        <tr><td style="padding:14px 20px 4px;">
+          <span style="display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:4px 11px;font-size:11px;font-weight:700;text-transform:uppercase;color:#334155;">{{ plano }}</span>
+          <span style="display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:4px 11px;font-size:11px;font-weight:700;text-transform:uppercase;color:#334155;">{{ aluno.nome }}</span>
+        </td></tr>
+
+        <!-- métricas -->
+        <tr><td style="padding:16px 20px 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eef0f3;">
+            <tr>
+              <td style="padding-top:14px;">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#94a3b8;">VENCIMENTO</div>
+                <div style="font-size:16px;font-weight:800;color:#0f172a;">{{ vencimento }}</div>
+              </td>
+              <td style="padding-top:14px;" align="right">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#94a3b8;">VALOR</div>
+                <div style="font-size:16px;font-weight:800;color:{{ cores.texto if dias < 0 else '#0f172a' }};">{{ valor }}</div>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        {% if pix %}
+        <tr><td style="padding:0 20px 22px;">
+          <div style="background:#2457e6;border-radius:10px;padding:13px 16px;color:#ffffff;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;opacity:.8;">PAGUE VIA PIX</div>
+            <div style="font-size:15px;font-weight:800;word-break:break-all;">{{ pix }}</div>
+          </div>
+        </td></tr>
+        {% endif %}
+      </table>
+    </td></tr>
+
+    <!-- rodapé -->
+    <tr><td style="padding:18px 6px;font-size:12px;color:#94a3b8;line-height:1.6;text-align:center;">
+      Se você já pagou, por favor desconsidere esta mensagem.
+      {% if telefone %}<br>Dúvidas? Fale com a gente: <strong style="color:#64748b;">{{ telefone }}</strong>{% endif %}
+      <br>{{ academia }}
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

@@ -4,27 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}Painel{% endblock %} · {{ academia }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div class="layout">
-  <nav class="menu">
-    <span class="marca">🏋️ {{ academia }}<small>Controle de mensalidades</small></span>
-    {% set ep = request.endpoint or '' %}
-    <a href="{{ url_for('dashboard') }}" class="{{ 'ativo' if ep == 'dashboard' }}">📊 Dashboard</a>
-    <a href="{{ url_for('alunos') }}" class="{{ 'ativo' if ep.startswith('aluno') }}">👥 Inscritos</a>
-    <a href="{{ url_for('validade') }}" class="{{ 'ativo' if ep == 'validade' }}">📅 Consulta de validade</a>
-    <a href="{{ url_for('financeiro') }}" class="{{ 'ativo' if ep == 'financeiro' }}">💰 Financeiro</a>
-    <a href="{{ url_for('avisos') }}" class="{{ 'ativo' if ep == 'avisos' }}">✉️ Avisos e cobrança</a>
-    <a href="{{ url_for('planos') }}" class="{{ 'ativo' if ep == 'planos' }}">🏷️ Planos</a>
-    <a href="{{ url_for('logout') }}" class="sair">↩ Sair</a>
+{% set ep = request.endpoint or '' %}
+<header class="topbar">
+  <a class="logo" href="{{ url_for('dashboard') }}"><span class="logo-mark"></span><span class="nome">{{ academia }}</span></a>
+  <nav class="tabs">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'ativo' if ep == 'dashboard' }}">{{ icone('layout', 16) }} Dashboard</a>
+    <a href="{{ url_for('alunos') }}" class="{{ 'ativo' if ep.startswith('aluno') }}">{{ icone('users', 16) }} Inscritos</a>
+    <a href="{{ url_for('validade') }}" class="{{ 'ativo' if ep == 'validade' }}">{{ icone('calendar', 16) }} Validade</a>
+    <a href="{{ url_for('financeiro') }}" class="{{ 'ativo' if ep == 'financeiro' }}">{{ icone('wallet', 16) }} Financeiro</a>
+    <a href="{{ url_for('avisos') }}" class="{{ 'ativo' if ep == 'avisos' }}">{{ icone('bell', 16) }} Avisos</a>
+    <a href="{{ url_for('planos') }}" class="{{ 'ativo' if ep == 'planos' }}">{{ icone('tag', 16) }} Planos</a>
+    <a href="{{ url_for('configuracoes') }}" class="{{ 'ativo' if ep == 'configuracoes' }}">{{ icone('settings', 16) }} Configurações</a>
   </nav>
-  <main class="conteudo">
-    {% for cat, msg in get_flashed_messages(with_categories=true) %}
-      <div class="flash {{ cat }}">{{ msg }}</div>
-    {% endfor %}
-    {% block conteudo %}{% endblock %}
-  </main>
-</div>
+  <div class="usuario">
+    <div><strong>{{ usuario }}</strong><small>Administrador · Geral</small></div>
+    <span class="avatar">{{ usuario[:1] }}</span>
+    <a class="sair" href="{{ url_for('logout') }}" title="Sair">{{ icone('logout', 17) }}</a>
+  </div>
+</header>
+<main class="pagina">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ cat }}">{{ icone('check' if cat == 'ok' else 'alert', 17) }} {{ msg }}</div>
+  {% endfor %}
+  {% block conteudo %}{% endblock %}
+</main>
 </body>
 </html>

@@ -1,118 +1,97 @@
 {% extends "base.html" %}
+{% from "_componentes.html" import card_inadimplente with context %}
 {% block titulo %}Dashboard{% endblock %}
 {% block conteudo %}
-<div class="topo">
-  <div>
-    <h1>Dashboard</h1>
-    <p class="sub">Hoje é {{ hoje.isoformat()|data_br }} · próxima cobrança automática: {{ proxima_cobranca.strftime('%d/%m às %H:%M') }}</p>
-  </div>
-  <a class="btn primario" href="{{ url_for('aluno_novo') }}">+ Novo aluno</a>
+<div class="hero">
+  <div class="saudacao">Olá, {{ usuario }} 👋</div>
+  <h1>Painel de mensalidades</h1>
+  <p class="sub">Hoje é {{ hoje.isoformat()|data_br }} · próxima cobrança automática em <b>{{ proxima_cobranca.strftime('%d/%m às %H:%M') }}</b></p>
 </div>
 
 <div class="kpis">
-  <div class="kpi">
-    <div class="rotulo">Mensalistas ativos</div>
+  <a class="kpi" href="{{ url_for('alunos') }}" style="color:inherit">
+    <div class="topo-kpi"><span class="ico g-azul">{{ icone('users', 20) }}</span><span class="pill azul">+{{ r.novos_mes }} no mês</span></div>
     <div class="valor">{{ r.ativos }}</div>
-    <div class="det">{{ r.em_dia }} em dia · {{ r.vencidos }} vencido(s) · {{ r.novos_mes }} novo(s) no mês</div>
-  </div>
-  <div class="kpi">
-    <div class="rotulo">Faturado no mês</div>
+    <div class="rotulo">Mensalistas ativos</div>
+    <div class="det">{{ r.em_dia }} em dia · {{ r.vencidos }} vencido(s)</div>
+  </a>
+  <a class="kpi" href="{{ url_for('financeiro') }}" style="color:inherit">
+    <div class="topo-kpi"><span class="ico g-teal">{{ icone('wallet', 20) }}</span><span class="pill verde">{{ r.pagamentos_mes }} pagamentos</span></div>
     <div class="valor">{{ r.faturado_mes|moeda }}</div>
-    <div class="det">{{ r.pagamentos_mes }} pagamento(s) recebido(s)</div>
-  </div>
+    <div class="rotulo">Faturado no mês</div>
+    <div class="det">recebido até hoje</div>
+  </a>
   <div class="kpi">
-    <div class="rotulo">Receita mensal prevista</div>
+    <div class="topo-kpi"><span class="ico g-indigo">{{ icone('trending', 20) }}</span></div>
     <div class="valor">{{ r.mrr|moeda }}</div>
-    <div class="det">soma dos planos ativos (equivalente a 30 dias)</div>
+    <div class="rotulo">Receita mensal prevista</div>
+    <div class="det">soma dos planos ativos (30 dias)</div>
   </div>
-  <div class="kpi alerta">
-    <div class="rotulo">Inadimplentes (+{{ DIAS_INADIMPLENCIA }} dias)</div>
+  <a class="kpi {{ 'destaque' if r.inadimplentes }}" href="#inadimplentes" style="color:inherit">
+    <div class="topo-kpi"><span class="ico g-laranja">{{ icone('alert', 20) }}</span><span class="pill vermelho">{{ r.valor_em_aberto|moeda }}</span></div>
     <div class="valor">{{ r.inadimplentes|length }}</div>
-    <div class="det">{{ r.valor_em_aberto|moeda }} em aberto</div>
-  </div>
+    <div class="rotulo">Inadimplentes</div>
+    <div class="det">{{ DIAS_INADIMPLENCIA }}+ dias após o vencimento</div>
+  </a>
 </div>
 
-<div class="card">
-  <div class="topo" style="margin-bottom:8px">
-    <div>
-      <h2 style="margin-bottom:2px">🚨 Venceram há {{ DIAS_INADIMPLENCIA }} dias ou mais e não pagaram</h2>
-      <p class="sub">Ordenado pelo maior atraso</p>
-    </div>
+<div class="secao" id="inadimplentes">
+  <div>
+    <h2>Venceram há {{ DIAS_INADIMPLENCIA }} dias ou mais e não pagaram</h2>
+    <p class="sub">Ordenado pelo maior atraso · a trilha mostra os avisos automáticos já enviados</p>
+  </div>
+  <div class="acoes">
+    <span class="contador">{{ r.inadimplentes|length }} de {{ r.ativos }} alunos</span>
     {% if r.inadimplentes %}
     <form method="post" action="{{ url_for('avisar_inadimplentes') }}"
-          onsubmit="return confirm('Enviar aviso por e-mail e WhatsApp para todos os {{ r.inadimplentes|length }} inadimplentes?')">
+          onsubmit="return confirm('Enviar aviso por e-mail e WhatsApp para os {{ r.inadimplentes|length }} inadimplentes?')">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
-      <button class="btn">✉️ Avisar todos</button>
+      <button class="btn">{{ icone('send', 15) }} Avisar todos</button>
     </form>
     {% endif %}
   </div>
-  <div class="tabela-wrap">
-  <table>
-    <thead><tr><th>Aluno</th><th>Plano</th><th>Venceu em</th><th class="num">Atraso</th><th class="num">Valor</th><th>Contato</th><th></th></tr></thead>
-    <tbody>
-    {% for a in r.inadimplentes %}
-      <tr>
-        <td><a href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}"><strong>{{ a.nome }}</strong></a></td>
-        <td>{{ a.plano_nome or '-' }}</td>
-        <td>{{ a.data_vencimento|data_br }}</td>
-        <td class="num atraso">{{ -a.dias }} dias</td>
-        <td class="num">{{ a.plano_valor|moeda }}</td>
-        <td style="font-size:13px">{{ a.telefone or '' }}<br><span style="color:var(--suave)">{{ a.email or '' }}</span></td>
-        <td>
-          <div class="acoes">
-            <form method="post" action="{{ url_for('avisar_aluno', aluno_id=a.id) }}">
-              <input type="hidden" name="csrf" value="{{ csrf_token }}">
-              <input type="hidden" name="canal" value="email">
-              <input type="hidden" name="voltar" value="{{ url_for('dashboard') }}">
-              <button class="btn pequeno" {{ 'disabled' if not a.email }} title="Enviar e-mail">✉️ E-mail</button>
-            </form>
-            <form method="post" action="{{ url_for('avisar_aluno', aluno_id=a.id) }}">
-              <input type="hidden" name="csrf" value="{{ csrf_token }}">
-              <input type="hidden" name="canal" value="whatsapp">
-              <input type="hidden" name="voltar" value="{{ url_for('dashboard') }}">
-              <button class="btn pequeno whats" {{ 'disabled' if not a.telefone }} title="Enviar WhatsApp">WhatsApp</button>
-            </form>
-            <a class="btn pequeno primario" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}#pagamento">Receber</a>
-          </div>
-        </td>
-      </tr>
-    {% else %}
-      <tr><td colspan="7" class="vazio">Nenhum aluno com {{ DIAS_INADIMPLENCIA }}+ dias de atraso. 🎉</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  </div>
+</div>
+<div class="cards">
+  {% for a in r.inadimplentes %}
+    {{ card_inadimplente(a, csrf_token, url_for('dashboard')) }}
+  {% else %}
+    <div class="vazio">Nenhum aluno com {{ DIAS_INADIMPLENCIA }}+ dias de atraso. 🎉</div>
+  {% endfor %}
 </div>
 
-<div class="grid-2">
-  <div class="card">
-    <h2>Faturamento – últimos 6 meses</h2>
+<div class="grade-2" style="margin-top:34px">
+  <section class="card">
+    <div class="card-titulo">
+      <span class="ico p g-azul">{{ icone('trending', 17) }}</span>
+      <div><h2>Faturamento</h2><p class="sub">últimos 6 meses</p></div>
+    </div>
     <div class="barras">
       {% for m in r.historico %}
-      <div class="barra {{ 'atual' if loop.last }}">
+      <div class="coluna-g {{ 'atual' if loop.last }}">
         <span class="v">{{ m.total|moeda_inteira }}</span>
-        <div class="coluna" style="height: {{ (m.total / maior * 140)|round(0, 'floor') }}px"></div>
+        <div class="b" style="height: {{ (m.total / maior * 140)|round(0, 'floor') }}px"></div>
         <span class="m">{{ m.mes|mes_curto }}</span>
       </div>
       {% endfor %}
     </div>
-  </div>
+  </section>
 
-  <div class="card">
-    <h2>Vencem nos próximos 7 dias</h2>
-    <table>
-      <tbody>
+  <section class="card">
+    <div class="card-titulo">
+      <span class="ico p g-violeta">{{ icone('calendar', 17) }}</span>
+      <div><h2>Vencem nos próximos 7 dias</h2><p class="sub">{{ proximos|length }} aluno(s)</p></div>
+    </div>
+    <ul class="lista">
       {% for a in proximos %}
-        <tr>
-          <td><a href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">{{ a.nome }}</a></td>
-          <td>{{ a.data_vencimento|data_br }}</td>
-          <td class="num"><span class="tag a_vencer">{{ 'hoje' if a.dias == 0 else 'em ' ~ a.dias ~ 'd' }}</span></td>
-        </tr>
+      <li>
+        <span class="avatar" style="width:30px;height:30px;font-size:12px;background:var(--azul-t1);color:var(--azul)">{{ a.nome[:1] }}</span>
+        <div class="grow"><strong><a href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}" style="color:inherit">{{ a.nome }}</a></strong><small>{{ a.plano_nome }} · {{ a.data_vencimento|data_br }}</small></div>
+        <span class="pill {{ 'amarelo' if a.dias <= 2 else 'azul' }}">{{ 'hoje' if a.dias == 0 else 'em ' ~ a.dias ~ 'd' }}</span>
+      </li>
       {% else %}
-        <tr><td class="vazio">Nenhum vencimento nos próximos 7 dias.</td></tr>
+      <li class="vazio" style="justify-content:center">Nenhum vencimento nos próximos 7 dias.</li>
       {% endfor %}
-      </tbody>
-    </table>
-  </div>
+    </ul>
+  </section>
 </div>
 {% endblock %}

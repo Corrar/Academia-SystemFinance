@@ -7,10 +7,12 @@ from functools import wraps
 
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 
+import ajustes
 import cobranca
 import config
 import db
 import notificacoes
+from icones import icone
 from notificacoes import data_br, moeda
 
 app = Flask(__name__)
@@ -19,6 +21,7 @@ app.jinja_env.filters["moeda"] = moeda
 app.jinja_env.filters["data_br"] = data_br
 app.jinja_env.filters["moeda_inteira"] = lambda v: moeda(round(v or 0))[:-3]
 MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+app.jinja_env.globals["icone"] = icone
 app.jinja_env.filters["mes_curto"] = lambda ym: f"{MESES[int(ym[5:7]) - 1]}/{ym[2:4]}"
 
 STATUS_ROTULO = {
@@ -28,15 +31,26 @@ STATUS_ROTULO = {
     "inadimplente": "Inadimplente",
     "inativo": "Inativo",
 }
+# status -> (tom de cor do card, ícone)
+TONS = {
+    "em_dia": ("verde", "check"),
+    "a_vencer": ("azul", "clock"),
+    "vencido": ("laranja", "alert"),
+    "inadimplente": ("vermelho", "alert"),
+    "inativo": ("cinza", "ban"),
+}
 FORMAS_PAGAMENTO = ["PIX", "Dinheiro", "Cartão de débito", "Cartão de crédito", "Boleto", "Transferência"]
 
 
 @app.context_processor
 def contexto_global():
     return {
-        "academia": config.ACADEMIA_NOME,
+        "academia": ajustes.obter("academia_nome"),
+        "usuario": config.ADMIN_USUARIO.capitalize(),
         "STATUS_ROTULO": STATUS_ROTULO,
+        "TONS": TONS,
         "DIAS_INADIMPLENCIA": config.DIAS_INADIMPLENCIA,
+        "DIAS_AVISO": config.DIAS_AVISO,
         "csrf_token": session.get("csrf"),
         "hoje": db.hoje(),
     }
@@ -85,6 +99,7 @@ def logout():
 @login_obrigatorio
 def dashboard():
     resumo = db.resumo_dashboard()
+    db.avisos_do_ciclo(resumo["inadimplentes"])
     maior = max([m["total"] for m in resumo["historico"]] + [1])
     return render_template(
         "dashboard.html",
@@ -102,8 +117,11 @@ def dashboard():
 def alunos():
     termo = request.args.get("q", "").strip()
     status = request.args.get("status", "")
-    lista = db.buscar_alunos(termo, status)
-    return render_template("alunos.html", alunos=lista, termo=termo, status=status)
+    todos = db.buscar_alunos(termo)
+    contagem = {k: sum(1 for a in todos if a["status"] == k) for k in STATUS_ROTULO}
+    lista = [a for a in todos if a["status"] == status] if status else todos
+    return render_template("alunos.html", alunos=lista, termo=termo, status=status,
+                           contagem=contagem, total=len(todos))
 
 
 def _form_aluno() -> dict:
@@ -321,7 +339,7 @@ def avisos():
         "avisos.html",
         avisos=db.notificacoes_recentes(200),
         cfg={
-            "email": f"SMTP {config.SMTP_HOST}:{config.SMTP_PORTA}" if config.SMTP_HOST else None,
+            "email": "{host}:{porta}".format(**ajustes.smtp()) if ajustes.smtp()["host"] else None,
             "whatsapp": config.WHATSAPP_PROVEDOR if config.WHATSAPP_PROVEDOR != "simulado" else None,
             "dias": config.DIAS_AVISO,
             "hora": config.HORA_COBRANCA,
@@ -401,6 +419,70 @@ def planos():
         contagem = dict(con.execute(
             "SELECT plano_id, COUNT(*) FROM alunos WHERE ativo = 1 GROUP BY plano_id").fetchall())
     return render_template("planos.html", planos=db.listar_planos(), contagem=contagem)
+
+
+# ---------------------------------------------------------------- configurações
+
+PRESETS_SMTP = {
+    "Gmail": ("smtp.gmail.com", 587, "tls"),
+    "Outlook / Hotmail": ("smtp-mail.outlook.com", 587, "tls"),
+    "Microsoft 365": ("smtp.office365.com", 587, "tls"),
+    "Hostinger": ("smtp.hostinger.com", 465, "ssl"),
+    "Locaweb": ("email-ssl.com.br", 465, "ssl"),
+    "Zoho": ("smtp.zoho.com", 465, "ssl"),
+}
+
+
+def _aluno_exemplo() -> dict:
+    return {"id": 0, "nome": "Aluno Exemplo", "plano_nome": "Mensal", "plano_valor": 120.0,
+            "data_vencimento": (db.hoje() + timedelta(days=3)).isoformat()}
+
+
+@app.route("/configuracoes", methods=["GET", "POST"])
+@login_obrigatorio
+def configuracoes():
+    if request.method == "POST":
+        valores = {k: request.form.get(k, "") for k in ajustes.CAMPOS if k != "smtp_senha"}
+        # senha em branco = manter a atual
+        if request.form.get("smtp_senha"):
+            valores["smtp_senha"] = request.form["smtp_senha"]
+        if valores.get("smtp_porta") and not valores["smtp_porta"].isdigit():
+            flash("A porta SMTP deve ser um número.", "erro")
+            return redirect(url_for("configuracoes"))
+        ajustes.salvar(valores)
+        flash("Configurações salvas.", "ok")
+        return redirect(url_for("configuracoes"))
+    valores = {k: ajustes.obter(k) for k in ajustes.CAMPOS}
+    return render_template("configuracoes.html", v=valores, tem_senha=bool(valores.pop("smtp_senha")),
+                           presets=PRESETS_SMTP)
+
+
+@app.post("/configuracoes/teste-email")
+@login_obrigatorio
+def teste_email():
+    destino = request.form.get("destino", "").strip()
+    if "@" not in destino:
+        flash("Informe um e-mail válido para o teste.", "erro")
+        return redirect(url_for("configuracoes"))
+    exemplo = _aluno_exemplo()
+    assunto, texto = notificacoes.montar_mensagem(exemplo)
+    try:
+        status = notificacoes.enviar_email(destino, "[TESTE] " + assunto, texto, notificacoes.montar_email_html(exemplo))
+    except Exception as e:  # noqa: BLE001 - mostra o erro do servidor de e-mail
+        flash(f"Falha ao enviar: {e}", "erro")
+        return redirect(url_for("configuracoes"))
+    if status == "simulado":
+        flash("Servidor SMTP não configurado: preencha os dados acima e salve antes de testar.", "erro")
+    else:
+        flash(f"E-mail de teste enviado para {destino}. Confira a caixa de entrada (e o spam).", "ok")
+    return redirect(url_for("configuracoes"))
+
+
+@app.route("/configuracoes/email-preview")
+@login_obrigatorio
+def email_preview():
+    aluno = db.obter_aluno(int(request.args["aluno"])) if request.args.get("aluno") else _aluno_exemplo()
+    return notificacoes.montar_email_html(aluno or abort(404))
 
 
 # ---------------------------------------------------------------- inicialização
