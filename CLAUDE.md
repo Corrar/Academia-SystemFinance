@@ -82,9 +82,11 @@ Tabelas: `planos`, `alunos`, `pagamentos`, `notificacoes` (com `assunto`), `reaj
 
 - Toda entrega para o usuário sobe a versão: edite `VERSION` e adicione no topo do `CHANGELOG.md` a seção
   `## [X.Y.Z] - AAAA-MM-DD · Título` com itens `- **destaque**: texto`. O teste `test_versao_e_saude_publicas`
-  falha se a versão não tiver seção. Ao chegar na `main`, `.github/workflows/release.yml` cria a tag e a release.
-- A API de Actions não é acessível desta sessão (proxy); releases e tags podem ser lidas/criadas por
-  `gh api repos/Corrar/Academia-SystemFinance/releases` (só REST; GraphQL é bloqueado).
+  falha se a versão não tiver seção. Ao chegar na `main`, `.github/workflows/release.yml` cria a tag e a release
+  de toda versão do CHANGELOG que ainda não tem uma (a atual vira "Latest"; as antigas usam o commit de
+  `.github/releases-anteriores.txt`).
+- Desta sessão só dá para **ler** releases e tags (`gh api repos/Corrar/Academia-SystemFinance/releases`, só REST):
+  criar release pela API e enviar tags com `git push` retornam 403. Quem cria é sempre o workflow.
 - Workflows: `testes.yml` (pyflakes + pytest), `release.yml`, `monitor.yml` (de hora em hora em `/api/saude`;
   abre/fecha issue `fora-do-ar`) e `dependabot.yml`.
 

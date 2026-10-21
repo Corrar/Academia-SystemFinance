@@ -1,11 +1,13 @@
-# Publica a release no GitHub sempre que o arquivo VERSION muda na main.
+# Publica no GitHub a release de cada versão do CHANGELOG.md que ainda não tem uma.
+# A versão atual (arquivo VERSION) aponta para o commit do push e vira a "Latest";
+# as antigas usam o commit listado em .github/releases-anteriores.txt.
 # As notas vêm da seção da versão no CHANGELOG.md (o mesmo texto da página Novidades do sistema).
 name: Release
 
 on:
   push:
     branches: [main]
-    paths: [VERSION, CHANGELOG.md]
+    paths: [VERSION, CHANGELOG.md, .github/releases-anteriores.txt, .github/workflows/release.yml]
   workflow_dispatch:
 
 permissions:
@@ -22,21 +24,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version-file: .python-version
-      - name: Ler a versão
-        id: versao
-        run: |
-          versao="$(python versao.py)"
-          echo "versao=$versao" >> "$GITHUB_OUTPUT"
-          if git rev-parse -q --verify "refs/tags/v$versao" >/dev/null; then
-            echo "existe=sim" >> "$GITHUB_OUTPUT"
-            echo "A release v$versao já existe: nada a fazer."
-          fi
-      - name: Publicar a release
-        if: steps.versao.outputs.existe != 'sim'
+      - name: Publicar as releases que faltam
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSAO: ${{ steps.versao.outputs.versao }}
         run: |
-          python versao.py notas "$VERSAO" > notas.md
-          gh release create "v$VERSAO" --target "$GITHUB_SHA" \
-            --title "$(python versao.py titulo "$VERSAO")" --notes-file notas.md --latest
+          atual="$(python versao.py)"
+          for v in $(python versao.py lista); do
+            if gh release view "v$v" >/dev/null 2>&1; then
+              echo "v$v já publicada."
+              continue
+            fi
+            if [ "$v" = "$atual" ]; then
+              alvo="$GITHUB_SHA"; ultima=true
+            else
+              alvo="$(awk -v v="$v" '$1 == v {print $2}' .github/releases-anteriores.txt)"; ultima=false
+            fi
+            if [ -z "$alvo" ]; then
+              echo "::warning::Sem commit para a v$v em .github/releases-anteriores.txt"
+              continue
+            fi
+            python versao.py notas "$v" > notas.md
+            gh release create "v$v" --target "$alvo" --title "$(python versao.py titulo "$v")" \
+              --notes-file notas.md --latest=$ultima
+          done

@@ -50,6 +50,9 @@ if __name__ == "__main__":
     if comando == "titulo":
         s = secao(alvo)
         print(f"v{alvo}" + (f" · {s['titulo']}" if s and s["titulo"] else ""))
+    elif comando == "lista":
+        # da mais antiga para a mais nova
+        print("\n".join(s["versao"] for s in reversed(historico())))
     elif comando == "notas":
         texto = notas(alvo)
         if not texto:
