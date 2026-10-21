@@ -47,7 +47,22 @@
 {% endif %}
 
 <div class="secao"><div><h2>Histórico de avisos</h2><p class="sub">últimos 200 envios</p></div><span class="contador">{{ avisos|length }} registro(s)</span></div>
-<div class="card" style="padding:8px 18px">
+<ul class="lista-cel so-celular">
+  {% for n in avisos %}
+  <li><div class="item-cel">
+    <span class="icone-cel" aria-hidden="true">{{ icone('mail' if n.canal == 'email' else 'whatsapp', 18) }}</span>
+    <span class="corpo">
+      {% if n.aluno_id %}<a href="{{ url_for('aluno_detalhe', aluno_id=n.aluno_id) }}"><strong>{{ n.nome }}</strong></a>{% else %}<strong>-</strong>{% endif %}
+      <small>{{ 'E-mail' if n.canal == 'email' else 'WhatsApp' }} · {{ n.tipo }} · {{ n.criado_em[8:10] }}/{{ n.criado_em[5:7] }} {{ n.criado_em[11:16] }}</small>
+      {% if n.erro %}<small class="erro-cel">{{ n.erro }}</small>{% endif %}
+    </span>
+    <span class="fim"><span class="pill {{ n.status }}">{{ n.status }}</span></span>
+  </div></li>
+  {% else %}
+  <li class="vazio">Nenhum aviso enviado ainda.</li>
+  {% endfor %}
+</ul>
+<div class="card so-desktop" style="padding:8px 18px">
   <div class="tabela-wrap">
   <table>
     <thead><tr><th>Quando</th><th>Aluno</th><th>Canal</th><th>Destino</th><th>Tipo</th><th>Status</th></tr></thead>

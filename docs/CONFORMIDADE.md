@@ -42,6 +42,8 @@ Auditoria automática com **axe-core 4.10** em 14 páginas, nos modos **claro e 
 | Campos sem rótulo | 23 (19 campos e 4 seleções) | 0: os rótulos envolvem os campos; buscas, testes e botões de ícone têm `aria-label` |
 | Texto alternativo em imagens | O sistema **não tem imagens** `<img>`. Os ícones SVG são decorativos (`aria-hidden`), e o significado está no texto ao lado ou no `aria-label` do botão. As barras de progresso têm descrição em texto para leitor de tela. | ✅ |
 | Navegação por teclado | Sem foco visível | Link "Pular para o conteúdo", contorno de foco em todos os elementos, `aria-current` no menu e nos filtros, seleção de provedor de WhatsApp pelas setas. Login e navegação pelo painel testados só com teclado. |
+| Animações e movimento | — | Transições entre páginas, entradas em cascata, molas e contadores ficam desligados quando o aparelho pede **menos movimento** (`prefers-reduced-motion`). Os números que contam até o valor mantêm o valor final para leitores de tela. Nada pisca nem se move sozinho por mais de 5 segundos. |
+| Confirmações e mensagens | `confirm()` do navegador | Confirmações em diálogo próprio (`role="alertdialog"`), com o foco começando em **Cancelar** e Esc para fechar. Mensagens de sucesso somem após 5 s (pausam com o mouse ou o foco); as de erro ficam até serem fechadas. |
 | Outros | Páginas sem região principal, link só por cor, cabeçalho de tabela vazio | `<main>` em todas as páginas, links sublinhados no texto, mensagens com `role="status"`/`alert`, `prefers-reduced-motion` respeitado |
 
 A auditoria automática encontra em torno de metade dos problemas reais. Antes de publicar, recomenda-se um teste

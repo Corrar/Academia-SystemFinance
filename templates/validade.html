@@ -33,7 +33,18 @@
   <div><h2>Próximos vencimentos</h2><p class="sub">nos próximos 15 dias</p></div>
   <span class="contador">{{ proximos|length }} aluno(s)</span>
 </div>
-<div class="card" style="padding:8px 18px">
+<ul class="lista-cel so-celular">
+  {% for a in proximos %}
+  <li><a class="item-cel" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">
+    <span class="avatar" aria-hidden="true">{{ a.nome[:1] }}</span>
+    <span class="corpo"><strong>{{ a.nome }}</strong><small>{{ a.plano_nome or 'Sem plano' }} · vence {{ a.data_vencimento|data_br }}</small></span>
+    <span class="pill {{ 'amarelo' if a.dias <= 2 else 'azul' }}">{{ 'hoje' if a.dias == 0 else 'em ' ~ a.dias ~ 'd' }}</span>{{ icone('chevron-right', 16) }}
+  </a></li>
+  {% else %}
+  <li class="vazio">Nenhum vencimento nos próximos 15 dias.</li>
+  {% endfor %}
+</ul>
+<div class="card so-desktop" style="padding:8px 18px">
   <div class="tabela-wrap">
   <table>
     <thead><tr><th>Aluno</th><th>Plano</th><th>Vencimento</th><th class="num">Faltam</th></tr></thead>

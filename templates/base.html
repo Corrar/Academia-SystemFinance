@@ -42,11 +42,19 @@
 {% endif %}
 
 <main class="pagina" id="conteudo" tabindex="-1">
-  {% for cat, msg in get_flashed_messages(with_categories=true) %}
-    <div class="flash {{ cat }}" role="{{ 'alert' if cat == 'erro' else 'status' }}">{{ icone('check' if cat == 'ok' else 'alert', 17) }} {{ msg }}</div>
-  {% endfor %}
   {% block conteudo %}{% endblock %}
 </main>
+
+{# Mensagens no estilo Sonner: sobem com mola e somem sozinhas (as de erro ficam até fechar) #}
+{% set mensagens = get_flashed_messages(with_categories=true) %}
+<div class="toasts" aria-live="polite">
+  {% for cat, msg in mensagens %}
+    <p class="toast {{ cat }}" role="{{ 'alert' if cat == 'erro' else 'status' }}" {{ 'data-sumir' if cat != 'erro' }}>
+      {{ icone('check' if cat == 'ok' else 'alert', 18) }}<span class="texto">{{ msg }}</span>
+      <button type="button" class="toast-fechar" data-fechar-toast aria-label="Fechar mensagem">{{ icone('x', 15) }}</button>
+    </p>
+  {% endfor %}
+</div>
 {% include "_rodape.html" %}
 
 {# Barra de abas inferior (só no celular): a aba atual vira um círculo preenchido #}
@@ -101,7 +109,7 @@
       {{ linha(url_for('planos'), 'tag', 'Planos e valores', ep == 'planos') }}
       {{ linha(url_for('financeiro'), 'receipt', 'Pagamentos recebidos') }}
       <form method="post" action="{{ url_for('executar_cobranca') }}" data-item
-            onsubmit="return confirm('Enviar agora os avisos de vencimento do dia?')">
+            data-confirmar="Os avisos de vencimento do dia serão enviados agora por e-mail e WhatsApp." data-titulo="Executar a cobrança agora?" data-ok="Enviar avisos">
         <input type="hidden" name="csrf" value="{{ csrf_token }}">
         <button class="menu-linha" type="submit"><span>Executar cobrança agora</span>{{ icone('send', 24) }}</button>
       </form>
@@ -118,6 +126,16 @@
       <a class="menu-linha perigo" data-item href="{{ url_for('logout') }}"><span>Sair</span>{{ icone('logout', 24) }}</a>
     </section>
     <p class="menu-vazio" data-menu-vazio hidden>Nada no menu com esse nome. Toque em Buscar para procurar nos inscritos.</p>
+  </div>
+</dialog>
+
+{# Confirmação no estilo AlertDialog (substitui o confirm() do navegador) #}
+<dialog class="alerta" id="confirmar" role="alertdialog" aria-labelledby="confirmar-titulo" aria-describedby="confirmar-texto">
+  <h2 id="confirmar-titulo">Tem certeza?</h2>
+  <p id="confirmar-texto"></p>
+  <div class="alerta-acoes">
+    <button type="button" class="btn" data-cancelar>Cancelar</button>
+    <button type="button" class="btn primario" data-confirmar-ok>Confirmar</button>
   </div>
 </dialog>
 </body>

@@ -14,6 +14,7 @@
 <img alt="WhatsApp: Z-API, Evolution, Meta, Twilio" src="https://img.shields.io/badge/WhatsApp-Z--API%20%C2%B7%20Meta%20%C2%B7%20Twilio-25d366?logo=whatsapp&logoColor=white">
 <a href="docs/CONFORMIDADE.md"><img alt="LGPD revisado" src="https://img.shields.io/badge/LGPD-revisado-6d28d9"></a>
 <a href="docs/CONFORMIDADE.md#4-acessibilidade-wcag-21-aa"><img alt="WCAG 2.1 AA" src="https://img.shields.io/badge/WCAG-2.1%20AA-0f766e"></a>
+<a href="#design"><img alt="Design: shadcn/ui" src="https://img.shields.io/badge/design-shadcn%2Fui-18181b"></a>
 
 </div>
 
@@ -27,13 +28,18 @@
 <p align="center"><sub>Captura real do painel (modo claro), com alunos fictícios de demonstração.</sub></p>
 
 <p align="center">
-  <img src="docs/assets/dashboard-escuro.png" alt="Dashboard no modo escuro" width="50%">
-  &nbsp;
-  <img src="docs/assets/celular.png" alt="Painel no celular com a barra de abas flutuante e a aba atual em um círculo azul" width="21%">
-  &nbsp;
-  <img src="docs/assets/celular-menu.png" alt="Menu em tela cheia no celular, com busca, cartões de acesso rápido e listas" width="21%">
+  <img src="docs/assets/dashboard-escuro.png" alt="Dashboard no modo escuro" width="100%">
 </p>
-<p align="center"><sub>Modo escuro e versão para celular: barra de abas flutuante e menu em tela cheia com busca.</sub></p>
+<p align="center"><sub>Modo escuro (tokens escuros do shadcn/ui).</sub></p>
+
+<p align="center">
+  <img src="docs/assets/celular.png" alt="Painel no celular: ações rápidas, indicadores e barra de abas flutuante com a aba atual em um círculo azul" width="30%">
+  &nbsp;
+  <img src="docs/assets/celular-ficha.png" alt="Ficha do aluno no celular com as ações Receber, Avisar, WhatsApp e Editar no topo" width="30%">
+  &nbsp;
+  <img src="docs/assets/celular-menu.png" alt="Menu em tela cheia no celular, com alça para arrastar, busca, cartões de acesso rápido e listas" width="30%">
+</p>
+<p align="center"><sub>Celular: ações rápidas em cartões, ficha com ações no topo (como no app Contatos) e menu em tela cheia.</sub></p>
 
 <table>
   <tr>
@@ -43,7 +49,17 @@
   </tr>
 </table>
 
-Visual no estilo Apple (fonte do sistema, botões em pílula, controles segmentados), com **modo escuro** e, no celular, **barra de abas flutuante** (a aba atual vira um círculo) com **menu em tela cheia**: busca, cartões de acesso rápido e listas por assunto.
+### Design
+
+- **shadcn/ui** como sistema de design: os mesmos tokens (`--background`, `--card`, `--primary`, `--muted`, `--border`, `--ring`,
+  `--radius`) e as receitas de *Button*, *Card*, *Badge*, *Input*, *Tabs*, *Drawer*, *AlertDialog* e *Sonner*, escritas em CSS puro.
+  Assim o sistema continua leve (Flask + Jinja, sem React e sem etapa de build) e a política de segurança segue `default-src 'self'`.
+- **Movimento no estilo Apple**: transição suave entre páginas (View Transitions), com o círculo da aba ativa deslizando até a nova aba;
+  entrada em cascata; molas ao tocar em botões e cartões; números dos indicadores contando até o valor; barras e trilhas que crescem;
+  troca de tema em círculo a partir do botão; menu que sobe com a curva das folhas do iOS e fecha arrastando a alça.
+  Tudo é desligado quando o aparelho pede **menos movimento**.
+- **Celular**: cartões tocáveis por inteiro, ações rápidas no painel e na ficha do aluno, tabelas viram listas em cartão,
+  confirmações em folha na parte de baixo da tela e mensagens que aparecem no topo e somem sozinhas.
 
 Feito em **Python + Flask**. No computador usa **SQLite** (não precisa instalar banco de dados); na nuvem
 (Vercel) usa **Postgres**. Roda em Windows, Mac ou Linux com Python 3.10 ou mais novo.
@@ -205,10 +221,12 @@ academia-systemfinance/
 ├── seed.py           # dados de exemplo (fictícios)
 ├── vercel.json       # Cron diário da cobrança na Vercel
 ├── templates/        # páginas HTML (+ email_aviso.html; legal/ = documentos públicos)
+├── static/style.css  # sistema de design (tokens e componentes do shadcn/ui) e animações
+├── static/tema.js    # modo claro/escuro com transição em círculo
+├── static/interface.js # menu (Drawer), confirmações (AlertDialog), mensagens (Sonner), contadores
 ├── docs/CONFORMIDADE.md  # revisão LGPD, acessibilidade e segurança
 ├── docs/assets/      # banner e capturas usados neste README
-├── LICENCAS_TERCEIROS.md # licenças de ícones e fonte
-└── static/style.css
+└── LICENCAS_TERCEIROS.md # licenças de ícones, fontes e shadcn/ui
 ```
 
 ## Privacidade, acessibilidade e segurança
@@ -218,7 +236,8 @@ Resumo da revisão (detalhes em [`docs/CONFORMIDADE.md`](docs/CONFORMIDADE.md)):
 - **LGPD:** coleta mínima (sem data de nascimento, CPF opcional), autorização de avisos por canal, registro do aceite dos
   termos, exportação e anonimização de dados na ficha do aluno, histórico de avisos apagado após `RETENCAO_AVISOS_DIAS`.
 - **Sem rastreamento:** nenhum analytics ou script de terceiros. A fonte é servida pelo próprio sistema e o único cookie é o de sessão.
-- **Acessibilidade:** 0 ocorrências na auditoria axe-core (WCAG 2.1 AA), nos modos claro e escuro, no computador e no celular. Antes eram 477.
+- **Acessibilidade:** 0 ocorrências na auditoria axe-core (WCAG 2.1 AA), nos modos claro e escuro, no computador e no celular,
+  incluindo o menu e as confirmações. Antes eram 477. As animações respeitam a preferência de menos movimento.
 - **Segurança:** bloqueio após 5 logins errados, cabeçalhos de segurança (CSP etc.), chave de sessão aleatória e alerta de senha padrão.
 - **Cobrança não abusiva:** avisos só em horário comercial e no máximo `MAX_LEMBRETES_SEMANAIS` lembretes semanais.
 

@@ -9,25 +9,36 @@
   <form method="get"><input type="month" name="mes" value="{{ mes }}" onchange="this.form.submit()" style="width:190px" aria-label="Mês"></form>
 </div>
 
-<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+<div class="kpis tres">
   <div class="kpi">
-    <div class="topo-kpi"><span class="ico g-teal">{{ icone('wallet', 20) }}</span></div>
-    <div class="valor">{{ total|moeda }}</div><div class="rotulo">Total recebido</div><div class="det">no mês selecionado</div>
+    <div class="topo-kpi"><span class="rotulo">Total recebido</span><span class="ico p g-teal">{{ icone('wallet', 17) }}</span></div>
+    <div class="valor" data-contar>{{ total|moeda }}</div><div class="det">no mês selecionado</div>
   </div>
   <div class="kpi">
-    <div class="topo-kpi"><span class="ico g-azul">{{ icone('receipt', 20) }}</span></div>
-    <div class="valor">{{ pagamentos|length }}</div><div class="rotulo">Pagamentos</div><div class="det">lançamentos no mês</div>
+    <div class="topo-kpi"><span class="rotulo">Pagamentos</span><span class="ico p g-azul">{{ icone('receipt', 17) }}</span></div>
+    <div class="valor" data-contar>{{ pagamentos|length }}</div><div class="det">lançamentos no mês</div>
   </div>
   <div class="kpi">
-    <div class="topo-kpi"><span class="ico g-violeta">{{ icone('dollar', 20) }}</span></div>
-    <div class="valor">{{ (total / pagamentos|length if pagamentos else 0)|moeda }}</div><div class="rotulo">Ticket médio</div><div class="det">valor médio por pagamento</div>
+    <div class="topo-kpi"><span class="rotulo">Ticket médio</span><span class="ico p g-violeta">{{ icone('dollar', 17) }}</span></div>
+    <div class="valor" data-contar>{{ (total / pagamentos|length if pagamentos else 0)|moeda }}</div><div class="det">valor médio por pagamento</div>
   </div>
 </div>
 
 <div class="grade-21" style="margin-top:18px">
   <section class="card">
     <div class="card-titulo"><span class="ico p g-azul">{{ icone('receipt', 17) }}</span><div><h2>Lançamentos</h2><p class="sub">{{ pagamentos|length }} pagamento(s)</p></div></div>
-    <div class="tabela-wrap">
+    <ul class="lista-cel so-celular">
+      {% for p in pagamentos %}
+      <li><a class="item-cel" href="{{ url_for('aluno_detalhe', aluno_id=p.aluno_id) }}">
+        <span class="avatar" aria-hidden="true">{{ p.nome[:1] }}</span>
+        <span class="corpo"><strong>{{ p.nome }}</strong><small>{{ p.data_pagamento|data_br }} · {{ p.forma or '-' }}</small></span>
+        <span class="fim"><b>{{ p.valor|moeda }}</b></span>{{ icone('chevron-right', 16) }}
+      </a></li>
+      {% else %}
+      <li class="vazio">Nenhum pagamento neste mês.</li>
+      {% endfor %}
+    </ul>
+    <div class="tabela-wrap so-desktop">
     <table>
       <thead><tr><th>Data</th><th>Aluno</th><th>Forma</th><th class="num">Valor</th></tr></thead>
       <tbody>

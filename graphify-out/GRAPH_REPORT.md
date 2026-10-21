@@ -1,22 +1,22 @@
 # Graph Report - academia-systemfinance  (2026-10-21)
 
 ## Corpus Check
-- 20 files · ~24,649 words
+- 21 files · ~26,761 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 4, .css 2, .example 1)
 
 ## Summary
-- 257 nodes · 543 edges · 15 communities (9 shown, 6 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 15 edges (avg confidence: 0.9)
+- 265 nodes · 552 edges · 17 communities (11 shown, 6 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 17 edges (avg confidence: 0.9)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `afd72cd4`
+- Built from commit: `5066744a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- conectar
+- app.py
 - db.py
 - notificacoes.py
 - test_app.py
@@ -24,13 +24,15 @@
 - README.md
 - ajustes.py
 - Corpu's Academia — cobrança de mensalidades
-- app.py
+- hoje
+- icones.py
 - Licenças de terceiros
 - tema.js
 - vercel.json
 - CLAUDE.md
 - graphify-guard.sh
 - session-start.sh
+- interface.js
 
 ## God Nodes (most connected - your core abstractions)
 1. `conectar()` - 32 edges
@@ -47,35 +49,35 @@
 ## Surprising Connections (you probably didn't know these)
 - `Convenções` --references--> `csrf()`  [INFERRED]
   CLAUDE.md → tests/conftest.py
-- `Mapa dos arquivos` --references--> `alunos()`  [INFERRED]
-  CLAUDE.md → app.py
 - `Mapa dos arquivos` --references--> `planos()`  [INFERRED]
   CLAUDE.md → app.py
+- `Mapa dos arquivos` --references--> `_enriquecer()`  [INFERRED]
+  CLAUDE.md → db.py
 - `Corpu's Academia — cobrança de mensalidades` --references--> `main()`  [INFERRED]
   CLAUDE.md → seed.py
-- `Convenções` --references--> `_traduzir()`  [INFERRED]
-  CLAUDE.md → db.py
+- `Mapa dos arquivos` --references--> `alunos()`  [INFERRED]
+  CLAUDE.md → app.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (15 total, 6 thin omitted)
+## Communities (17 total, 6 thin omitted)
 
-### Community 0 - "conectar"
-Cohesion: 0.11
-Nodes (30): alternar_ativo(), aluno_anonimizar(), aluno_detalhe(), aluno_editar(), aluno_excluir(), aluno_novo(), avisar_aluno(), avisar_inadimplentes() (+22 more)
+### Community 0 - "app.py"
+Cohesion: 0.09
+Nodes (38): alternar_ativo(), aluno_anonimizar(), aluno_detalhe(), aluno_editar(), aluno_excluir(), _aluno_exemplo(), aluno_exportar(), aluno_novo() (+30 more)
 
 ### Community 1 - "db.py"
-Cohesion: 0.08
-Nodes (15): _bloqueado(), login(), iniciar_agendador(), _loop_agendador(), agora(), _conexao_pg(), _ConexaoSQLite, _fabrica_linhas() (+7 more)
+Cohesion: 0.09
+Nodes (14): _bloqueado(), login(), executar_cobranca(), iniciar_agendador(), _loop_agendador(), agora(), _conexao_pg(), _ConexaoSQLite (+6 more)
 
 ### Community 2 - "notificacoes.py"
-Cohesion: 0.09
-Nodes (26): _aluno_exemplo(), email_preview(), teste_email(), teste_whatsapp(), Mapa dos arquivos, dias_para_vencer(), _enriquecer(), status_aluno() (+18 more)
+Cohesion: 0.11
+Nodes (19): alunos(), Mapa dos arquivos, data_br(), enviar_email(), enviar_whatsapp(), _evolution(), ja_enviado(), link_whatsapp() (+11 more)
 
 ### Community 3 - "test_app.py"
-Cohesion: 0.12
-Nodes (9): limpar_falhas_login(), cliente(), csrf(), logado(), test_aviso_respeita_quem_nao_autorizou(), test_bloqueio_apos_cinco_senhas_erradas(), test_documentos_publicos_sem_login_e_sem_cookie(), test_exportar_e_anonimizar() (+1 more)
+Cohesion: 0.09
+Nodes (12): buscar_alunos(), iniciar_banco(), limpar_falhas_login(), main(), cliente(), csrf(), logado(), test_aviso_respeita_quem_nao_autorizou() (+4 more)
 
 ### Community 4 - "config.py"
 Cohesion: 0.22
@@ -83,19 +85,27 @@ Nodes (4): _carregar_env(), _chave_secreta(), _env(), _int()
 
 ### Community 5 - "README.md"
 Cohesion: 0.09
-Nodes (20): 1. Documentação e termos, 2. Privacidade e dados (LGPD), 3. Rastreamento e analytics, 4. Acessibilidade (WCAG 2.1 AA), 5. Transparência e direitos autorais, 6. Segurança e riscos jurídicos, O que a academia precisa fazer 📋, Revisão de conformidade: LGPD, acessibilidade, transparência e segurança (+12 more)
+Nodes (21): 1. Documentação e termos, 2. Privacidade e dados (LGPD), 3. Rastreamento e analytics, 4. Acessibilidade (WCAG 2.1 AA), 5. Transparência e direitos autorais, 6. Segurança e riscos jurídicos, O que a academia precisa fazer 📋, Revisão de conformidade: LGPD, acessibilidade, transparência e segurança (+13 more)
 
 ### Community 6 - "ajustes.py"
-Cohesion: 0.23
-Nodes (11): empresa(), obter(), salvar(), smtp(), whatsapp(), avisos(), configuracoes(), contexto_global() (+3 more)
+Cohesion: 0.20
+Nodes (12): empresa(), obter(), salvar(), smtp(), whatsapp(), avisos(), configuracoes(), contexto_global() (+4 more)
 
 ### Community 7 - "Corpu's Academia — cobrança de mensalidades"
 Cohesion: 0.12
 Nodes (11): Armadilhas conhecidas, Comandos, Convenções, Corpu's Academia — cobrança de mensalidades, Deploy (Vercel + Neon), graphify, O que o sistema faz, Regras de negócio (+3 more)
 
-### Community 9 - "app.py"
-Cohesion: 0.09
-Nodes (17): aluno_exportar(), alunos(), cabecalhos_seguranca(), cron_cobranca(), _documento(), executar_cobranca(), logout(), privacidade() (+9 more)
+### Community 8 - "hoje"
+Cohesion: 0.16
+Nodes (12): dashboard(), validade(), _validade_sugerida(), avisos_do_ciclo(), dias_para_vencer(), _enriquecer(), hoje(), inadimplentes() (+4 more)
+
+### Community 10 - "Licenças de terceiros"
+Cohesion: 0.50
+Nodes (3): Licenças de terceiros, Lucide, shadcn/ui
+
+### Community 11 - "tema.js"
+Cohesion: 0.83
+Nodes (3): aplicar(), atualizarBotoes(), estaEscuro()
 
 ## Knowledge Gaps
 - **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
@@ -103,17 +113,17 @@ Nodes (17): aluno_exportar(), alunos(), cabecalhos_seguranca(), cron_cobranca(),
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Corpu's Academia — cobrança de mensalidades` connect `Corpu's Academia — cobrança de mensalidades` to `db.py`, `notificacoes.py`?**
-  _High betweenness centrality (0.053) - this node is a cross-community bridge._
-- **Should `conectar` be split into smaller, more focused modules?**
-  _Cohesion score 0.10953058321479374 - nodes in this community are weakly interconnected._
-- **Why does `conectar()` connect `conectar` to `db.py`, `notificacoes.py`, `test_app.py`, `ajustes.py`, `app.py`?**
-  _High betweenness centrality (0.039) - this node is a cross-community bridge._
+- **Why does `Corpu's Academia — cobrança de mensalidades` connect `Corpu's Academia — cobrança de mensalidades` to `notificacoes.py`, `test_app.py`?**
+  _High betweenness centrality (0.050) - this node is a cross-community bridge._
+- **Should `app.py` be split into smaller, more focused modules?**
+  _Cohesion score 0.08780841799709724 - nodes in this community are weakly interconnected._
+- **Why does `conectar()` connect `app.py` to `db.py`, `notificacoes.py`, `test_app.py`, `ajustes.py`, `hoje`?**
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
 - **Should `db.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.07657657657657657 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08522727272727272 - nodes in this community are weakly interconnected._
 - **Should `notificacoes.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.08985200845665962 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10588235294117647 - nodes in this community are weakly interconnected._
 - **Should `test_app.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.1225296442687747 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09195402298850575 - nodes in this community are weakly interconnected._
 - **Should `README.md` be split into smaller, more focused modules?**
-  _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08695652173913043 - nodes in this community are weakly interconnected._

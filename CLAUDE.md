@@ -35,8 +35,9 @@ desenvolvimento e Postgres (Neon, via psycopg 3) em produção. Sem ORM: SQL esc
 | `icones.py` | Ícones Lucide em SVG inline (`icone('nome', tamanho)`). |
 | `seed.py` | Popula 30 alunos fictícios para demonstração. |
 | `templates/` | `base.html` (cabeçalho, abas, barra de abas do celular e menu em tela cheia `#mais`), `_head.html`, `_componentes.html` e `legal/` (privacidade, termos, reembolso). |
-| `static/style.css` | Todo o visual, no estilo Apple. Tokens em `:root`. |
-| `static/tema.js` | Alterna claro/escuro (localStorage) abre/fecha o menu em tela cheia e filtra a busca do menu. |
+| `static/style.css` | Todo o visual: tokens e receitas do shadcn/ui em CSS puro, animações e View Transitions. |
+| `static/tema.js` | Alterna claro/escuro (localStorage), com transição em círculo a partir do botão. |
+| `static/interface.js` | Menu em tela cheia (Drawer com arrastar para fechar), busca do menu, confirmações (`data-confirmar` → AlertDialog), mensagens (Sonner) e contadores (`data-contar`). |
 | `vercel.json` | Cron diário `0 12 * * *` (9h em Brasília) → `/api/cron/cobranca`. |
 | `docs/CONFORMIDADE.md` | O que foi feito para LGPD, acessibilidade e riscos jurídicos. |
 
@@ -82,10 +83,20 @@ Não rode `playwright install`.
   no fim, nos dois bancos.
 - Todo POST precisa do campo `csrf` (`{{ csrf_token }}`). Endpoints públicos ficam em `PUBLICAS`
   no `app.py`.
-- Design:
-  - fundo branco no modo claro e modo escuro completo;
-  - fonte do sistema (SF Pro), com Inter local como alternativa;
-  - botões em pílula, controles segmentados e switches no estilo iOS;
+- Design (shadcn/ui em CSS puro, sem React nem Tailwind):
+  - tokens do shadcn no `:root` (`--background`, `--card`, `--primary`, `--muted`, `--border`, `--input`,
+    `--ring`, `--radius`); os nomes antigos (`--superficie`, `--texto`, `--suave`…) apontam para eles;
+  - componentes: `.btn` = Button outline, `.btn.primario` = default, `.btn.perigo`, `.btn.destrutivo`,
+    `.btn.fantasma`; `.card`/`.kpi`/`.tcard` = Card; `.pill` = Badge; `.filtros` = Tabs; `.toast` = Sonner;
+    `#confirmar` = AlertDialog; `#mais` = Drawer;
+  - fonte do sistema (SF Pro), com Inter local como alternativa; switches no estilo iOS;
+  - confirmação de ação: `<form data-confirmar="texto" data-titulo="..." data-ok="Rótulo" data-perigo>`
+    (nunca `onsubmit="return confirm()"`);
+  - no celular, tabelas têm uma versão `.lista-cel.so-celular` e a tabela fica em `.so-desktop`;
+    `.tcard.tocavel` deixa o cartão inteiro clicável; `.acoes-contato` são as ações rápidas;
+  - movimento: curvas `--curva` (folhas do iOS) e `--mola`; entrada em cascata com
+    `animation-fill-mode: backwards` (com `both` o `transform` final trava o hover); View Transitions
+    entre páginas (`topo`, `abas` e `aba-ativa` têm nome próprio); tudo some com `prefers-reduced-motion`;
   - abaixo de 760px, barra de abas flutuante (cantos de 34px) com Início, Inscritos, Validade,
     Financeiro e Menu; a aba atual vira um círculo azul de 60px só com o ícone;
   - "Menu" abre um `<dialog>` em tela cheia: botão fechar redondo, busca em pílula (filtra o menu
@@ -115,6 +126,8 @@ Não rode `playwright install`.
   Use `pkill -f "[b]in/python app[.]py"` numa chamada separada.
 - O servidor Flask local guarda templates em cache: reinicie depois de editar HTML.
 - `<form>` não pode ficar dentro de `<tr>`: use o atributo `form="id"` nos botões.
+- Itens de grid com texto `nowrap` estouram a largura no celular: `.grade-2 > *` e afins usam `min-width: 0`.
+- Auditoria axe e capturas: use `reduced_motion="reduce"` no Playwright, senão pega elementos no meio da animação.
 - Macros de um template base não ficam visíveis nos filhos: ficam em `legal/_macros.html` e são
   importadas.
 - O login limpa a sessão (contra fixação de sessão) e gera um token CSRF novo.

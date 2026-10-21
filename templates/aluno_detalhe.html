@@ -10,14 +10,24 @@
     <p class="sub">Inscrito desde {{ aluno.data_inscricao|data_br }} · plano <b>{{ aluno.plano_nome or '-' }}</b> ({{ aluno.plano_valor|moeda }})</p>
   </div>
   <div class="acoes">
-    <a class="btn" href="{{ url_for('aluno_editar', aluno_id=aluno.id) }}">{{ icone('pencil', 15) }} Editar</a>
+    <a class="btn so-desktop" href="{{ url_for('aluno_editar', aluno_id=aluno.id) }}">{{ icone('pencil', 15) }} Editar</a>
     <form method="post" action="{{ url_for('alternar_ativo', aluno_id=aluno.id) }}"
-          onsubmit="return confirm('{{ 'Cancelar a matrícula? O aluno deixa de receber cobranças.' if aluno.ativo else 'Reativar matrícula?' }}')">
+          {% if aluno.ativo %}data-titulo="Cancelar a matrícula?" data-confirmar="{{ aluno.nome }} deixa de receber cobranças e sai da contagem de mensalistas. Dá para reativar depois." data-ok="Cancelar matrícula" data-perigo
+          {% else %}data-titulo="Reativar a matrícula?" data-confirmar="{{ aluno.nome }} volta a receber os avisos de vencimento." data-ok="Reativar"{% endif %}>
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
       <button class="btn {{ 'perigo' if aluno.ativo }}">{{ icone('ban' if aluno.ativo else 'refresh', 15) }} {{ 'Cancelar matrícula' if aluno.ativo else 'Reativar' }}</button>
     </form>
   </div>
 </div>
+
+{% set pode_email = aluno.email and aluno.aceita_email %}{% set pode_wa = aluno.telefone and aluno.aceita_whatsapp %}
+<nav class="acoes-contato so-celular" aria-label="Ações do aluno">
+  <a class="acao-contato principal" href="#pagamento">{{ icone('receipt', 22) }}Receber</a>
+  <a class="acao-contato" href="#aviso">{{ icone('send', 22) }}Avisar</a>
+  {% if link_wa and aluno.aceita_whatsapp %}<a class="acao-contato" href="{{ link_wa }}" target="_blank" rel="noopener">{{ icone('whatsapp', 22) }}WhatsApp</a>
+  {% else %}<span class="acao-contato" aria-disabled="true">{{ icone('whatsapp', 22) }}WhatsApp</span>{% endif %}
+  <a class="acao-contato" href="{{ url_for('aluno_editar', aluno_id=aluno.id) }}">{{ icone('pencil', 22) }}Editar</a>
+</nav>
 
 <div class="grade-2">
   <article class="tcard t-{{ tom }} {{ {'a_vencer': 'realce-azul', 'vencido': 'realce-laranja', 'inadimplente': 'realce-vermelho'}.get(aluno.status, '') }}">
@@ -75,14 +85,13 @@
   </section>
 </div>
 
-<section class="card" style="margin-top:18px">
+<section class="card" id="aviso" style="margin-top:18px">
   <div class="card-titulo">
     <span class="ico p g-azul">{{ icone('send', 17) }}</span>
     <div><h2>Enviar aviso de vencimento</h2><p class="sub">mensagem que será enviada agora</p></div>
   </div>
   <div class="msg-preview" tabindex="0" role="region" aria-label="Prévia da mensagem de aviso">{{ preview }}</div>
   <div class="linha-botoes">
-    {% set pode_email = aluno.email and aluno.aceita_email %}{% set pode_wa = aluno.telefone and aluno.aceita_whatsapp %}
     {% for canal, ic, rotulo, ok in [('email', 'mail', 'Enviar e-mail', pode_email), ('whatsapp', 'whatsapp', 'Enviar WhatsApp', pode_wa), ('ambos', 'send', 'Enviar pelos dois', pode_email or pode_wa)] %}
     <form method="post" action="{{ url_for('avisar_aluno', aluno_id=aluno.id) }}">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
@@ -98,7 +107,21 @@
 <div class="grade-2" style="margin-top:18px">
   <section class="card">
     <div class="card-titulo"><span class="ico p g-teal">{{ icone('wallet', 17) }}</span><div><h2>Pagamentos</h2><p class="sub">{{ pagamentos|length }} registro(s)</p></div></div>
-    <div class="tabela-wrap">
+    <ul class="lista-cel so-celular">
+      {% for p in pagamentos %}
+      <li><div class="item-cel">
+        <span class="icone-cel" aria-hidden="true">{{ icone('receipt', 18) }}</span>
+        <span class="corpo"><strong>{{ p.valor|moeda }}</strong><small>{{ p.data_pagamento|data_br }} · {{ p.forma or '-' }} · até {{ p.nova_validade|data_br }}</small></span>
+        <form method="post" action="{{ url_for('estornar_pagamento', pagamento_id=p.id) }}" data-titulo="Estornar este pagamento?" data-confirmar="O pagamento de {{ p.valor|moeda }} em {{ p.data_pagamento|data_br }} será apagado e a validade volta para a data anterior." data-ok="Estornar" data-perigo>
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="btn sm perigo" aria-label="Estornar pagamento de {{ p.data_pagamento|data_br }}">{{ icone('refresh', 14) }} Estornar</button>
+        </form>
+      </div></li>
+      {% else %}
+      <li class="vazio">Nenhum pagamento registrado.</li>
+      {% endfor %}
+    </ul>
+    <div class="tabela-wrap so-desktop">
     <table>
       <thead><tr><th>Data</th><th class="num">Valor</th><th>Forma</th><th>Validade</th><th><span class="sr-only">Ações</span></th></tr></thead>
       <tbody>
@@ -109,7 +132,7 @@
           <td>{{ p.forma or '-' }}</td>
           <td>até {{ p.nova_validade|data_br }}</td>
           <td class="num">
-            <form method="post" action="{{ url_for('estornar_pagamento', pagamento_id=p.id) }}" onsubmit="return confirm('Estornar este pagamento?')">
+            <form method="post" action="{{ url_for('estornar_pagamento', pagamento_id=p.id) }}" data-titulo="Estornar este pagamento?" data-confirmar="O pagamento de {{ p.valor|moeda }} em {{ p.data_pagamento|data_br }} será apagado e a validade volta para a data anterior." data-ok="Estornar" data-perigo>
               <input type="hidden" name="csrf" value="{{ csrf_token }}">
               <button class="btn sm quadrado perigo" title="Estornar" aria-label="Estornar pagamento de {{ p.data_pagamento|data_br }}">{{ icone('refresh', 14) }}</button>
             </form>
@@ -124,7 +147,19 @@
   </section>
   <section class="card">
     <div class="card-titulo"><span class="ico p g-indigo">{{ icone('bell', 17) }}</span><div><h2>Avisos enviados</h2><p class="sub">últimos 20</p></div></div>
-    <div class="tabela-wrap">
+    <ul class="lista-cel so-celular">
+      {% for n in avisos %}
+      <li><div class="item-cel">
+        <span class="icone-cel" aria-hidden="true">{{ icone('mail' if n.canal == 'email' else 'whatsapp', 18) }}</span>
+        <span class="corpo"><strong>{{ n.tipo }}</strong><small>{{ 'E-mail' if n.canal == 'email' else 'WhatsApp' }} · {{ n.criado_em[8:10] }}/{{ n.criado_em[5:7] }} {{ n.criado_em[11:16] }}</small>
+          {% if n.erro %}<small class="erro-cel">{{ n.erro }}</small>{% endif %}</span>
+        <span class="fim"><span class="pill {{ n.status }}">{{ n.status }}</span></span>
+      </div></li>
+      {% else %}
+      <li class="vazio">Nenhum aviso enviado ainda.</li>
+      {% endfor %}
+    </ul>
+    <div class="tabela-wrap so-desktop">
     <table>
       <thead><tr><th>Quando</th><th>Canal</th><th>Tipo</th><th>Status</th></tr></thead>
       <tbody>
@@ -153,12 +188,12 @@
   <div class="linha-botoes" style="margin-top:0">
     <a class="btn" href="{{ url_for('aluno_exportar', aluno_id=aluno.id) }}">{{ icone('receipt', 15) }} Exportar dados (arquivo)</a>
     <form method="post" action="{{ url_for('aluno_anonimizar', aluno_id=aluno.id) }}"
-          onsubmit="return confirm('Apagar nome, CPF, e-mail, telefone e observações deste aluno? Os valores pagos ficam guardados, sem identificação. Não dá para desfazer.')">
+          data-titulo="Apagar os dados pessoais?" data-confirmar="Nome, CPF, e-mail, telefone e observações serão apagados. Os valores pagos ficam guardados, sem identificação. Não dá para desfazer." data-ok="Anonimizar" data-perigo>
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
       <button class="btn perigo">{{ icone('ban', 15) }} Apagar dados pessoais (anonimizar)</button>
     </form>
     <form method="post" action="{{ url_for('aluno_excluir', aluno_id=aluno.id) }}"
-          onsubmit="return confirm('Excluir DEFINITIVAMENTE este aluno, inclusive os pagamentos? Atenção: a lei fiscal pode exigir guardar os pagamentos. Prefira anonimizar.')">
+          data-titulo="Excluir o aluno definitivamente?" data-confirmar="O aluno e todos os pagamentos serão apagados. A lei fiscal pode exigir guardar os pagamentos: prefira anonimizar." data-ok="Excluir tudo" data-perigo>
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
       <button class="btn perigo">{{ icone('trash', 15) }} Excluir tudo</button>
     </form>
