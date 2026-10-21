@@ -8,7 +8,10 @@ import notificacoes
 from conftest import csrf
 
 PAGINAS = ["/", "/alunos", "/alunos?status=inadimplente", "/alunos/3", "/alunos/3/editar", "/alunos/novo",
-           "/validade?q=a", "/financeiro", "/avisos", "/planos", "/configuracoes", "/configuracoes/email-preview?aluno=3"]
+           "/validade?q=a", "/financeiro", "/avisos", "/planos", "/configuracoes", "/configuracoes/email-preview?aluno=3",
+           "/alunos?plano=1&contato=whatsapp&ordem=vencimento&de=2026-01-01", "/alunos/cadastro-rapido",
+           "/alunos/cadastro-rapido?aba=colar", "/alunos/cadastro-rapido?aba=arquivo", "/avisos/fila",
+           "/avisos?canal=whatsapp&status=pendente&tipo=atraso", "/reajustes"]
 
 
 @pytest.mark.parametrize("url", ["/privacidade", "/termos", "/reembolso"])
@@ -74,7 +77,7 @@ def test_aviso_respeita_quem_nao_autorizou(logado):
     aluno = db.obter_aluno(int(r.location.rsplit("/", 1)[1]))
     resultado = notificacoes.notificar(aluno)
     assert resultado["whatsapp"] == "não autorizado"
-    assert resultado["email"] == "simulado"
+    assert resultado["email"] == "pendente"  # modo manual (padrão): vai para a fila de envio
 
 
 def test_exportar_e_anonimizar(logado):
@@ -91,3 +94,149 @@ def test_mensagem_de_cobranca_tem_valor_e_vencimento():
     _, texto = notificacoes.montar_mensagem(aluno)
     assert notificacoes.data_br(aluno["data_vencimento"]) in texto
     assert "R$" in texto
+
+
+# ---------------------------------------------------------------- cadastro rápido (fichas em papel)
+
+def test_ler_planilha_colada_reconhece_colunas_datas_e_planos():
+    import importacao
+    planos = db.listar_planos()
+    texto = "Nome\tWhatsApp\tVencimento\tPlano\nAna Paula\t11 98765-4321\t05/12/2026\tmensal\nBeto\t\t2026-11-30\t330"
+    linhas = importacao.ler_texto(texto, planos)
+    assert [l["nome"] for l in linhas] == ["Ana Paula", "Beto"]
+    assert linhas[0]["telefone"] == "(11) 98765-4321"
+    assert linhas[0]["data_vencimento"] == "2026-12-05" and linhas[1]["data_vencimento"] == "2026-11-30"
+    assert linhas[0]["plano_id"] == str(next(p["id"] for p in planos if p["nome"] == "Mensal"))
+    assert linhas[1]["plano_id"] == str(next(p["id"] for p in planos if p["valor"] == 330))
+
+
+def test_ler_planilha_xlsx_e_data_do_excel():
+    import io
+    from datetime import date
+    from openpyxl import Workbook
+    import importacao
+    livro = Workbook()
+    aba = livro.active
+    aba.append(["Nome completo", "Celular", "E-mail", "Válido até"])
+    aba.append(["Carla Dias", 11912345678, "CARLA@EXEMPLO.COM", date(2026, 12, 20)])
+    aba.append(["Davi Rocha", "(21) 3333-4444", "", 46300])  # número de série do Excel
+    arquivo = io.BytesIO()
+    livro.save(arquivo)
+    linhas = importacao.ler_arquivo("fichas.xlsx", arquivo.getvalue(), db.listar_planos())
+    assert linhas[0]["telefone"] == "(11) 91234-5678" and linhas[0]["email"] == "carla@exemplo.com"
+    assert linhas[0]["data_vencimento"] == "2026-12-20"
+    assert linhas[1]["data_vencimento"] == "2026-10-05"
+
+
+def test_cadastro_rapido_valida_e_salva_varias_fichas(logado):
+    antes = len(db.buscar_alunos())
+    base = {"csrf": csrf(logado), "acao": "salvar", "plano_padrao": "1", "aceita_whatsapp": "1"}
+    # ficha sem vencimento e telefone repetido: volta para revisão sem gravar nada
+    r = logado.post("/alunos/cadastro-rapido", data={**base,
+        "nome": ["Fulano Papel", "Ciclano Papel"], "telefone": ["(11) 97000-0001", "11970000001"],
+        "email": ["", ""], "cpf": ["", ""], "plano_id": ["", ""], "data_vencimento": ["2026-12-01", ""],
+        "data_inscricao": ["", ""]})
+    assert r.status_code == 200 and "repetido" in r.get_data(as_text=True)
+    assert len(db.buscar_alunos()) == antes
+    r = logado.post("/alunos/cadastro-rapido", data={**base,
+        "nome": ["Fulano Papel", "Ciclano Papel", ""], "telefone": ["(11) 97000-0001", "(11) 97000-0002", ""],
+        "email": ["fulano@exemplo.com", "", ""], "cpf": ["", "", ""], "plano_id": ["", "2", ""],
+        "data_vencimento": ["2026-12-01", "2026-12-15", ""], "data_inscricao": ["", "2025-03-10", ""]})
+    assert r.status_code == 302
+    novos = {a["nome"]: a for a in db.buscar_alunos("Papel")}
+    assert set(novos) == {"Fulano Papel", "Ciclano Papel"}
+    assert novos["Fulano Papel"]["plano_id"] == 1 and novos["Ciclano Papel"]["plano_id"] == 2
+    assert novos["Fulano Papel"]["aceita_whatsapp"] == 1 and novos["Fulano Papel"]["aceita_email"] == 0
+    assert "ficha em papel" in novos["Fulano Papel"]["observacoes"]
+    # a mesma ficha de novo é recusada como duplicada
+    r = logado.post("/alunos/cadastro-rapido", data={**base, "nome": ["Fulano Outra Vez"], "telefone": ["11970000001"],
+        "email": [""], "cpf": [""], "plano_id": [""], "data_vencimento": ["2026-12-01"], "data_inscricao": [""]})
+    assert "já cadastrado" in r.get_data(as_text=True)
+
+
+def test_colar_do_excel_mostra_revisao_sem_gravar(logado):
+    antes = len(db.buscar_alunos())
+    r = logado.post("/alunos/cadastro-rapido", data={"csrf": csrf(logado), "acao": "colar", "plano_padrao": "1",
+                                                      "texto": "Joana Revisão\t(11) 96000-1111\t\tMensal\t01/02/2027"})
+    html = r.get_data(as_text=True)
+    assert r.status_code == 200 and "Joana Revisão" in html and "Lemos" in html
+    assert len(db.buscar_alunos()) == antes
+
+
+# ---------------------------------------------------------------- filtros
+
+def test_filtros_de_busca(logado):
+    todos = db.buscar_alunos()
+    so_mensal = db.buscar_alunos(plano_id=1)
+    assert so_mensal and all(a["plano_id"] == 1 for a in so_mensal) and len(so_mensal) <= len(todos)
+    ordenados = db.buscar_alunos(ordem="vencimento")
+    assert [a["data_vencimento"] for a in ordenados] == sorted(a["data_vencimento"] for a in ordenados)
+    corte = ordenados[len(ordenados) // 2]["data_vencimento"]
+    assert all(a["data_vencimento"] >= corte for a in db.buscar_alunos(venc_de=corte))
+    assert all(a["telefone"] and a["aceita_whatsapp"] for a in db.buscar_alunos(contato="whatsapp"))
+    r = logado.get("/alunos/exportar.csv?plano=1")
+    assert r.status_code == 200 and r.mimetype == "text/csv" and "Nome;WhatsApp" in r.get_data(as_text=True)
+
+
+# ---------------------------------------------------------------- fila de envio (modo manual)
+
+def test_modo_manual_coloca_na_fila_e_abrir_marca_enviado(logado):
+    aluno = next(a for a in db.inadimplentes() if a["telefone"] and a["aceita_whatsapp"])
+    res = notificacoes.notificar(aluno, canais=("whatsapp",), tipo="manual")
+    assert res["whatsapp"] == "pendente"
+    item = [n for n in db.fila_envio() if n["aluno_id"] == aluno["id"]][-1]
+    link = notificacoes.link_envio(item)
+    assert link.startswith("https://wa.me/55") and "text=" in link
+    assert item["id"] in [n["id"] for n in db.fila_envio()]
+    r = logado.post(f"/avisos/{item['id']}/marcar", data={"csrf": csrf(logado)}, headers={"X-Requested-With": "fetch"})
+    assert r.get_json()["ok"] is True
+    assert item["id"] not in [n["id"] for n in db.fila_envio()]
+    email = {"canal": "email", "destino": "a@b.com", "assunto": "Olá & tchau", "mensagem": "Linha *1*"}
+    assert notificacoes.link_envio(email) == "mailto:a@b.com?subject=Ol%C3%A1%20%26%20tchau&body=Linha%201"
+
+
+def test_comprovante_de_pagamento_vai_para_a_fila(logado):
+    aluno = next(a for a in db.inadimplentes() if a["telefone"] and a["aceita_whatsapp"])
+    logado.post(f"/alunos/{aluno['id']}/pagamento", data={"csrf": csrf(logado), "valor": "120,00", "forma": "PIX",
+                "data_pagamento": db.hoje().isoformat(), "nova_validade": "2099-03-01", "comprovante": "1"})
+    fila = db.fila_envio(aluno["id"])
+    assert any(n["tipo"] == "comprovante" and "01/03/2099" in n["mensagem"] for n in fila)
+
+
+# ---------------------------------------------------------------- reajuste
+
+def test_reajuste_avisa_mensalistas_e_aplica_na_vigencia(logado):
+    from datetime import timedelta
+    import cobranca
+    plano = next(p for p in db.listar_planos() if p["nome"] == "Trimestral")
+    alunos = [a for a in db.buscar_alunos(plano_id=plano["id"]) if a["ativo"]]
+    vigencia = (db.hoje() + timedelta(days=40)).isoformat()
+    r = logado.post("/reajustes", data={"csrf": csrf(logado), f"plano_{plano['id']}": "1", f"valor_{plano['id']}": "360,00",
+                                        "vigencia": vigencia, "canal_whatsapp": "1", "canal_email": "1",
+                                        "observacao": "Aparelhos novos & manutenção"})
+    assert r.status_code == 302
+    reajuste = next(x for x in db.reajustes_agendados() if x["plano_id"] == plano["id"])
+    assert reajuste["valor_novo"] == 360 and reajuste["avisados"] >= 1
+    avisos = db.notificacoes_recentes(500, tipo="reajuste")
+    assert avisos and all("R$ 360,00" in n["mensagem"] for n in avisos)
+    assert {n["aluno_id"] for n in avisos} <= {a["id"] for a in alunos}
+    # vencimento depois da vigência já cobra o valor novo; antes, o atual
+    assert db.valor_do_plano(plano["id"], vigencia) == 360
+    assert db.valor_do_plano(plano["id"], db.hoje().isoformat()) == plano["valor"]
+    # segundo reajuste para o mesmo plano é recusado enquanto o primeiro estiver agendado
+    logado.post("/reajustes", data={"csrf": csrf(logado), f"plano_{plano['id']}": "1", f"valor_{plano['id']}": "400",
+                                    "vigencia": vigencia, "canal_whatsapp": "1"})
+    assert len([x for x in db.reajustes_agendados() if x["plano_id"] == plano["id"]]) == 1
+    # na vigência, a cobrança diária aplica o valor novo
+    with db.conectar() as con:
+        con.execute("UPDATE reajustes SET vigencia = ? WHERE id = ?", (db.hoje().isoformat(), reajuste["id"]))
+    assert cobranca.executar_cobranca()["reajustes_aplicados"] == 1
+    assert next(p for p in db.listar_planos() if p["id"] == plano["id"])["valor"] == 360
+    assert not [x for x in db.reajustes_agendados() if x["plano_id"] == plano["id"]]
+
+
+def test_reajuste_exige_vigencia_futura(logado):
+    plano = db.listar_planos()[0]
+    logado.post("/reajustes", data={"csrf": csrf(logado), f"plano_{plano['id']}": "1", f"valor_{plano['id']}": "999",
+                                    "vigencia": db.hoje().isoformat(), "canal_email": "1"})
+    assert not [x for x in db.reajustes_agendados() if x["valor_novo"] == 999]

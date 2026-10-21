@@ -28,6 +28,8 @@ def executar_cobranca() -> dict:
     with _trava:
         hoje = db.hoje()
         resumo = {"avaliados": 0, "avisados": 0, "erros": 0, "detalhes": []}
+        # reajustes cuja vigência chegou passam a valer antes de montar as mensagens
+        resumo["reajustes_aplicados"] = db.aplicar_reajustes()
         ultimo = max(config.DIAS_AVISO) if config.DIAS_AVISO else None
 
         for aluno in db.buscar_alunos():
@@ -48,12 +50,13 @@ def executar_cobranca() -> dict:
 
             chave = f"{aluno['data_vencimento']}:{dia_aviso:+d}"
             res = notificacoes.notificar(aluno, chave=chave)
-            if any(s in ("enviado", "simulado") for s in res.values()):
+            if any(s in notificacoes.ENTREGUES for s in res.values()):
                 resumo["avisados"] += 1
             if "erro" in res.values():
                 resumo["erros"] += 1
             resumo["detalhes"].append({"aluno": aluno["nome"], "dia": dia_aviso, "resultado": res})
 
+        resumo["na_fila"] = db.contar_fila()
         resumo["avisos_apagados"] = db.limpar_avisos_antigos(config.RETENCAO_AVISOS_DIAS)
         db.set_sistema("ultima_cobranca", datetime.now().isoformat(timespec="seconds"))
         db.set_sistema("ultima_cobranca_dia", hoje.isoformat())

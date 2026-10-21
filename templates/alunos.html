@@ -7,30 +7,78 @@
     <h1>Inscritos</h1>
     <p class="sub">Consulte os mensalistas, a situação e a validade de cada plano.</p>
   </div>
-  <a class="btn primario" href="{{ url_for('aluno_novo') }}">{{ icone('plus', 16) }} Novo aluno</a>
+  <div class="acoes">
+    <a class="btn" href="{{ url_for('alunos_lote') }}">{{ icone('prancheta', 16) }} Cadastro rápido</a>
+    <a class="btn primario" href="{{ url_for('aluno_novo') }}">{{ icone('plus', 16) }} Novo aluno</a>
+  </div>
 </div>
 
-<form class="barra-busca" method="get">
-  <label class="busca" aria-label="Buscar">
-    {{ icone('search', 17) }}
-    <input type="search" name="q" value="{{ termo }}" aria-label="Buscar alunos" placeholder="Buscar por nome, CPF, telefone ou e-mail…">
-  </label>
-  {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
-  <span class="contador" style="margin-left:auto">{{ alunos|length }} de {{ total }} alunos</span>
+{# Busca + filtros (GET: o link guarda os filtros e funciona sem JavaScript) #}
+<form class="filtros-form" method="get" id="filtros">
+  <div class="barra-busca">
+    <label class="busca" aria-label="Buscar">
+      {{ icone('search', 17) }}
+      <input type="search" name="q" value="{{ termo }}" aria-label="Buscar alunos" placeholder="Buscar por nome, CPF, telefone ou e-mail…">
+    </label>
+    {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+    <details class="painel-filtros" {{ 'open' if chips }}>
+      <summary class="btn">{{ icone('filtro', 16) }} Filtros{% if chips %} <span class="pill azul">{{ chips|length }}</span>{% endif %}</summary>
+      <div class="painel-filtros-corpo">
+        <label class="campo"><span class="rotulo-campo">Plano</span>
+          <select name="plano">
+            <option value="">Todos os planos</option>
+            {% for p in planos %}<option value="{{ p.id }}" {{ 'selected' if f.plano_id == p.id }}>{{ p.nome }}{{ '' if p.ativo else ' (inativo)' }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="campo"><span class="rotulo-campo">Contato e avisos</span>
+          <select name="contato">
+            <option value="">Qualquer</option>
+            {% for k, v in contatos.items() %}<option value="{{ k }}" {{ 'selected' if f.contato == k }}>{{ v }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="campo"><span class="rotulo-campo">Vence a partir de</span><input type="date" name="de" value="{{ f.venc_de }}"></label>
+        <label class="campo"><span class="rotulo-campo">Vence até</span><input type="date" name="ate" value="{{ f.venc_ate }}"></label>
+        <label class="campo"><span class="rotulo-campo">Ordenar por</span>
+          <select name="ordem">
+            {% for k, v in ordens.items() %}<option value="{{ k }}" {{ 'selected' if f.ordem == k }}>{{ v }}</option>{% endfor %}
+          </select>
+        </label>
+        <div class="painel-filtros-acoes">
+          <button class="btn primario">{{ icone('check', 15) }} Aplicar filtros</button>
+          {% if chips %}<a class="btn fantasma" href="{{ url_for('alunos', q=termo or None, status=status or None) }}">Limpar</a>{% endif %}
+        </div>
+      </div>
+    </details>
+    <span class="contador" style="margin-left:auto">{{ alunos|length }} de {{ total_geral }} alunos</span>
+  </div>
 </form>
 
-<nav class="filtros" style="margin-bottom:18px" aria-label="Filtrar por situação">
-  <a class="filtro {{ 'ativo' if not status }}" {{ 'aria-current="true"'|safe if not status }} href="{{ url_for('alunos', q=termo or None) }}">Todos <b>{{ total }}</b></a>
-  {% for k, v in STATUS_ROTULO.items() %}
-    <a class="filtro {{ 'ativo' if status == k }}" {{ 'aria-current="true"'|safe if status == k }} href="{{ url_for('alunos', q=termo or None, status=k) }}">{{ v }} <b>{{ contagem[k] }}</b></a>
+{% if chips %}
+<div class="chips-filtro" aria-label="Filtros aplicados">
+  {% for rotulo, link in chips %}
+    <a class="chip-filtro" href="{{ link }}" aria-label="Remover filtro: {{ rotulo }}">{{ rotulo }} {{ icone('x', 13) }}</a>
   {% endfor %}
-</nav>
+  <a class="link-limpar" href="{{ url_for('alunos', q=termo or None, status=status or None) }}">Limpar tudo</a>
+</div>
+{% endif %}
+
+<div class="linha-filtros">
+  <nav class="filtros" aria-label="Filtrar por situação">
+    {% set base = args.copy() %}{% set _ = base.pop('status', None) %}
+    <a class="filtro {{ 'ativo' if not status }}" {{ 'aria-current="true"'|safe if not status }} href="{{ url_for('alunos', **base) }}">Todos <b>{{ total }}</b></a>
+    {% for k, v in STATUS_ROTULO.items() %}
+      <a class="filtro {{ 'ativo' if status == k }}" {{ 'aria-current="true"'|safe if status == k }} href="{{ url_for('alunos', status=k, **base) }}">{{ v }} <b>{{ contagem[k] }}</b></a>
+    {% endfor %}
+  </nav>
+  <a class="btn sm fantasma" href="{{ url_for('alunos_exportar', **args) }}" download>{{ icone('planilha', 15) }} Exportar lista</a>
+</div>
 
 <div class="cards">
   {% for a in alunos %}
     {{ card_aluno(a, csrf_token) }}
   {% else %}
-    <div class="vazio">Nenhum aluno encontrado.</div>
+    <div class="vazio">Nenhum aluno encontrado{{ ' com esses filtros' if chips or termo or status }}.
+      {% if chips or termo or status %}<br><a href="{{ url_for('alunos') }}">Ver todos os inscritos</a>{% endif %}</div>
   {% endfor %}
 </div>
 {% endblock %}

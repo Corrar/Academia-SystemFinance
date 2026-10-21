@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block titulo %}Reajuste da mensalidade{% endblock %}
+{% block conteudo %}
+<div class="cabeca">
+  <div>
+    <h1>Reajuste da mensalidade</h1>
+    <p class="sub">Avise os mensalistas <b>antes</b> do novo valor valer. Na data de vigência o sistema aplica o valor novo sozinho.</p>
+  </div>
+  <a class="btn" href="{{ url_for('planos') }}">{{ icone('tag', 15) }} Planos e valores</a>
+</div>
+
+<form method="post" id="form-reajuste" data-titulo="Enviar o aviso de reajuste?"
+      data-confirmar="Os mensalistas dos planos marcados recebem o aviso agora (só pelos canais que autorizaram). O novo valor passa a valer na data escolhida." data-ok="Enviar aviso">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <div class="grade-21">
+    <section class="card">
+      <div class="card-titulo"><span class="ico p g-laranja">{{ icone('reajuste', 17) }}</span>
+        <div><h2>Novo valor</h2><p class="sub">marque os planos e informe o valor novo (ou aplique um percentual)</p></div></div>
+
+      <div class="percentual">
+        <label class="campo"><span class="rotulo-campo">Reajuste em % <span class="ajuda">· preenche os valores dos planos marcados</span></span>
+          <input type="text" inputmode="decimal" id="percentual" placeholder="Ex.: 8,5" autocomplete="off"></label>
+        <button type="button" class="btn" data-aplicar-percentual>{{ icone('check', 15) }} Aplicar %</button>
+      </div>
+
+      <div class="planos-reajuste" role="group" aria-label="Planos">
+        {% for p in planos %}
+        {% set ja = p.id in agendados %}
+        <div class="plano-reajuste {{ 'bloqueado' if ja }}">
+          <label class="check"><input type="checkbox" name="plano_{{ p.id }}" value="1" data-plano="{{ p.id }}" data-valor="{{ p.valor }}" data-alunos="{{ contagem.get(p.id, 0) }}" {{ 'disabled' if ja else 'checked' if loop.first }}>
+            <span><strong>{{ p.nome }}</strong><small>{{ p.valor|moeda }} · {{ contagem.get(p.id, 0) }} aluno(s) ativo(s){{ ' · já tem reajuste agendado' if ja }}</small></span></label>
+          <label class="campo valor-novo"><span class="rotulo-campo">Novo valor de {{ p.nome }} (R$)</span>
+            <input name="valor_{{ p.id }}" inputmode="decimal" placeholder="{{ '%.2f'|format(p.valor * 1.1) }}" data-valor-novo="{{ p.id }}" {{ 'disabled' if ja }}></label>
+          <span class="variacao" data-variacao="{{ p.id }}" aria-live="polite"></span>
+        </div>
+        {% else %}
+        <p class="vazio">Cadastre um plano ativo antes.</p>
+        {% endfor %}
+      </div>
+
+      <div class="form-grid" style="margin-top:16px">
+        <label class="campo"><span class="rotulo-campo">Vale a partir de *</span>
+          <input type="date" name="vigencia" id="vigencia" value="{{ vigencia_sugerida }}" min="{{ minimo }}" required data-antecedencia="{{ antecedencia }}"></label>
+        <fieldset class="campo" style="border:0;padding:0;margin:0">
+          <legend class="rotulo-campo" style="margin-bottom:8px">Avisar por</legend>
+          <div class="linha-botoes" style="margin-top:0;gap:20px">
+            <label class="check"><input type="checkbox" name="canal_whatsapp" value="1" checked> WhatsApp</label>
+            <label class="check"><input type="checkbox" name="canal_email" value="1" checked> E-mail</label>
+          </div>
+        </fieldset>
+        <label class="campo largo"><span class="rotulo-campo">Recado para os alunos <span class="ajuda">· opcional, entra no fim da mensagem</span></span>
+          <textarea name="observacao" rows="2" maxlength="500" placeholder="Ex.: o reajuste acompanha a inflação do período e os investimentos em aparelhos novos."></textarea></label>
+      </div>
+      <p class="aviso-antecedencia" id="aviso-antecedencia" hidden>{{ icone('alert', 15) }} Faltam menos de {{ antecedencia }} dias para a vigência. Recomendamos avisar com pelo menos {{ antecedencia }} dias de antecedência e conferir o que diz o contrato dos alunos.</p>
+    </section>
+
+    <aside class="card resumo-reajuste" style="align-self:start">
+      <div class="card-titulo"><span class="ico p g-azul">{{ icone('eye', 17) }}</span><div><h2>Prévia</h2><p class="sub">exemplo do texto que o aluno recebe</p></div></div>
+      <div class="msg-preview" tabindex="0" role="region" aria-label="Prévia da mensagem de reajuste" id="previa">{{ previa }}</div>
+      <dl class="dados" style="margin-top:14px;grid-template-columns:1fr 1fr">
+        <div><dt>Alunos que serão avisados</dt><dd id="total-avisados">–</dd></div>
+        <div><dt>Envio</dt><dd>{{ 'Automático' if modos.automatico else 'Fila de envio (você envia)' }}</dd></div>
+      </dl>
+      <div class="linha-botoes"><button class="btn primario bloco">{{ icone('megafone', 15) }} Avisar mensalistas</button></div>
+      <p class="ajuda" style="margin:10px 0 0">Quem não autorizou avisos ou não tem contato não recebe. Cada aluno é avisado uma única vez por reajuste.</p>
+    </aside>
+  </div>
+</form>
+
+<div class="secao"><div><h2>Histórico de reajustes</h2><p class="sub">agendados e já aplicados</p></div></div>
+<ul class="lista-cel">
+  {% for r in historico %}
+  <li><div class="item-cel">
+    <span class="icone-cel" aria-hidden="true">{{ icone('reajuste', 18) }}</span>
+    <span class="corpo">
+      <strong>{{ r.plano_nome }}: {{ r.valor_anterior|moeda }} → {{ r.valor_novo|moeda }}</strong>
+      <small>a partir de {{ r.vigencia|data_br }} · {{ r.avisados }} aluno(s) avisado(s){% if r.valor_anterior %} · {{ '%+.1f'|format((r.valor_novo / r.valor_anterior - 1) * 100) }}%{% endif %}</small>
+    </span>
+    <span class="fim">
+      <span class="pill {{ {'agendado': 'azul', 'aplicado': 'verde', 'cancelado': ''}[r.status] }}">{{ {'agendado': 'Agendado', 'aplicado': 'Aplicado', 'cancelado': 'Cancelado'}[r.status] }}</span>
+      {% if r.status == 'agendado' %}
+      <span class="acoes">
+        <form method="post" action="{{ url_for('reajuste_acao', reajuste_id=r.id, acao='aplicar') }}" data-titulo="Aplicar o valor novo hoje?"
+              data-confirmar="O plano {{ r.plano_nome }} passa a custar {{ r.valor_novo|moeda }} a partir de agora, antes da data de vigência." data-ok="Aplicar agora">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn sm fantasma">Aplicar agora</button></form>
+        <form method="post" action="{{ url_for('reajuste_acao', reajuste_id=r.id, acao='cancelar') }}" data-titulo="Cancelar o reajuste?"
+              data-confirmar="O valor do plano não muda. Quem já recebeu o aviso não é avisado do cancelamento: se precisar, avise os alunos." data-ok="Cancelar reajuste" data-perigo>
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn sm perigo">Cancelar</button></form>
+      </span>
+      {% endif %}
+    </span>
+  </div></li>
+  {% else %}
+  <li class="vazio">Nenhum reajuste ainda.</li>
+  {% endfor %}
+</ul>
+
+<script>
+  // percentual, variação e total de avisados (prévia rápida sem recarregar a página)
+  (function () {
+    var form = document.getElementById("form-reajuste");
+    var marcados = function () { return Array.prototype.slice.call(form.querySelectorAll("[data-plano]:checked")); };
+    var numero = function (t) { t = (t || "").replace(/[^\d,.]/g, ""); if (t.indexOf(",") > -1) t = t.replace(/\./g, "").replace(",", "."); return parseFloat(t); };
+    function atualizar() {
+      var total = 0;
+      form.querySelectorAll("[data-plano]").forEach(function (c) {
+        var campo = form.querySelector('[data-valor-novo="' + c.dataset.plano + '"]');
+        var saida = form.querySelector('[data-variacao="' + c.dataset.plano + '"]');
+        var novo = numero(campo.value), antigo = parseFloat(c.dataset.valor);
+        campo.disabled = c.disabled || !c.checked;
+        saida.textContent = c.checked && novo > 0 ? (novo >= antigo ? "+" : "") + ((novo / antigo - 1) * 100).toFixed(1).replace(".", ",") + "%" : "";
+        if (c.checked) total += +c.dataset.alunos;
+      });
+      document.getElementById("total-avisados").textContent = total + " aluno(s) ativo(s)";
+      var v = document.getElementById("vigencia"), dias = (new Date(v.value + "T12:00:00") - new Date()) / 864e5;
+      document.getElementById("aviso-antecedencia").hidden = !(dias < +v.dataset.antecedencia);
+    }
+    form.querySelector("[data-aplicar-percentual]").addEventListener("click", function () {
+      var pct = numero(document.getElementById("percentual").value);
+      if (!(pct > 0)) return;
+      marcados().forEach(function (c) {
+        var novo = parseFloat(c.dataset.valor) * (1 + pct / 100);
+        form.querySelector('[data-valor-novo="' + c.dataset.plano + '"]').value = novo.toFixed(2).replace(".", ",");
+      });
+      atualizar();
+    });
+    form.addEventListener("input", atualizar);
+    form.addEventListener("change", atualizar);
+    atualizar();
+  })();
+</script>
+{% endblock %}

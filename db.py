@@ -56,13 +56,27 @@ CREATE TABLE IF NOT EXISTS notificacoes (
     id           {AUTO},
     aluno_id     INTEGER REFERENCES alunos(id) ON DELETE CASCADE,
     canal        TEXT NOT NULL,          -- email | whatsapp
-    tipo         TEXT NOT NULL,          -- lembrete | vencimento | atraso | manual
+    tipo         TEXT NOT NULL,          -- lembrete | vencimento | atraso | manual | reajuste | comprovante
     chave        TEXT,                   -- evita aviso automático duplicado
     destino      TEXT,
-    status       TEXT NOT NULL,          -- enviado | simulado | erro
+    status       TEXT NOT NULL,          -- enviado | pendente (fila manual) | simulado | erro | descartado
     erro         TEXT,
     mensagem     TEXT,
+    assunto      TEXT,
     criado_em    TEXT NOT NULL DEFAULT {AGORA}
+);
+
+CREATE TABLE IF NOT EXISTS reajustes (
+    id              {AUTO},
+    plano_id        INTEGER NOT NULL REFERENCES planos(id) ON DELETE CASCADE,
+    valor_anterior  {REAL} NOT NULL,
+    valor_novo      {REAL} NOT NULL,
+    vigencia        TEXT NOT NULL,           -- a partir desta data (vencimentos) vale o valor novo
+    observacao      TEXT,
+    status          TEXT NOT NULL DEFAULT 'agendado',  -- agendado | aplicado | cancelado
+    avisados        INTEGER NOT NULL DEFAULT 0,
+    criado_em       TEXT NOT NULL DEFAULT {AGORA},
+    aplicado_em     TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sistema (
@@ -78,6 +92,7 @@ CREATE TABLE IF NOT EXISTS tentativas_login (
 CREATE INDEX IF NOT EXISTS idx_alunos_venc ON alunos(data_vencimento);
 CREATE INDEX IF NOT EXISTS idx_pag_data ON pagamentos(data_pagamento);
 CREATE INDEX IF NOT EXISTS idx_notif_chave ON notificacoes(aluno_id, chave, canal);
+CREATE INDEX IF NOT EXISTS idx_notif_status ON notificacoes(status);
 CREATE INDEX IF NOT EXISTS idx_tentativas_ip ON tentativas_login(ip);
 """
 
@@ -202,6 +217,7 @@ MIGRACOES = {
         "termos_aceitos_em": "TEXT",
         "anonimizado_em": "TEXT",
     },
+    "notificacoes": {"assunto": "TEXT"},
 }
 
 
@@ -290,24 +306,70 @@ def avisos_do_ciclo(alunos: list[dict]) -> None:
 
 # ---------------------------------------------------------------- consultas
 
-def buscar_alunos(termo: str = "", status: str = "") -> list[dict]:
-    sql = SQL_ALUNO
+ORDENS = {
+    "nome": "lower(a.nome)",
+    "vencimento": "a.data_vencimento, lower(a.nome)",
+    "vencimento_desc": "a.data_vencimento DESC, lower(a.nome)",
+    "recentes": "a.data_inscricao DESC, a.id DESC",
+}
+
+
+def _so_digitos(texto) -> str:
+    return "".join(c for c in (texto or "") if c.isdigit())
+
+
+def buscar_alunos(termo: str = "", status: str = "", plano_id: int | None = None, contato: str = "",
+                  venc_de: str = "", venc_ate: str = "", ordem: str = "nome") -> list[dict]:
+    """Busca com filtros. `contato`: whatsapp | email | sem_contato | sem_autorizacao."""
+    sql = SQL_ALUNO + " WHERE 1=1"
     params: list = []
     if termo:
-        digitos = "".join(c for c in termo if c.isdigit())
-        sql += " WHERE (lower(a.nome) LIKE lower(?) OR lower(a.email) LIKE lower(?)"
+        digitos = _so_digitos(termo)
+        sql += " AND (lower(a.nome) LIKE lower(?) OR lower(a.email) LIKE lower(?)"
         params += [f"%{termo}%", f"%{termo}%"]
         if digitos:
             sql += " OR REPLACE(REPLACE(REPLACE(a.cpf,'.',''),'-',''),' ','') LIKE ?"
             sql += " OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(a.telefone,'(',''),')',''),'-',''),' ',''),'+','') LIKE ?"
             params += [f"%{digitos}%", f"%{digitos}%"]
         sql += ")"
-    sql += " ORDER BY lower(a.nome)"
+    if plano_id:
+        sql += " AND a.plano_id = ?"
+        params.append(plano_id)
+    if venc_de:
+        sql += " AND a.data_vencimento >= ?"
+        params.append(venc_de)
+    if venc_ate:
+        sql += " AND a.data_vencimento <= ?"
+        params.append(venc_ate)
+    sql += " ORDER BY " + ORDENS.get(ordem, ORDENS["nome"])
     with conectar() as con:
         alunos = _enriquecer(con.execute(sql, params).fetchall())
     if status:
         alunos = [a for a in alunos if a["status"] == status]
+    if contato == "whatsapp":
+        alunos = [a for a in alunos if a["telefone"] and a["aceita_whatsapp"]]
+    elif contato == "email":
+        alunos = [a for a in alunos if a["email"] and a["aceita_email"]]
+    elif contato == "sem_contato":
+        alunos = [a for a in alunos if not a["telefone"] and not a["email"]]
+    elif contato == "sem_autorizacao":
+        alunos = [a for a in alunos if (a["telefone"] or a["email"]) and not a["aceita_whatsapp"] and not a["aceita_email"]]
     return alunos
+
+
+def contatos_existentes() -> dict:
+    """Telefones (últimos 11 dígitos), e-mails e CPFs já cadastrados, para evitar duplicados no cadastro rápido."""
+    with conectar() as con:
+        linhas = con.execute("SELECT id, nome, telefone, email, cpf FROM alunos").fetchall()
+    vistos = {"telefone": {}, "email": {}, "cpf": {}}
+    for r in linhas:
+        if _so_digitos(r["telefone"]):
+            vistos["telefone"][_so_digitos(r["telefone"])[-11:]] = r["nome"]
+        if r["email"]:
+            vistos["email"][r["email"].strip().lower()] = r["nome"]
+        if _so_digitos(r["cpf"]):
+            vistos["cpf"][_so_digitos(r["cpf"])] = r["nome"]
+    return vistos
 
 
 def obter_aluno(aluno_id: int) -> dict | None:
@@ -403,15 +465,90 @@ def listar_planos(somente_ativos: bool = False):
         return con.execute(sql).fetchall()
 
 
-def notificacoes_recentes(limite: int = 100, aluno_id: int | None = None):
-    sql = "SELECT n.*, a.nome FROM notificacoes n LEFT JOIN alunos a ON a.id = n.aluno_id"
-    params: tuple = ()
-    if aluno_id:
-        sql += " WHERE n.aluno_id = ?"
-        params = (aluno_id,)
+def notificacoes_recentes(limite: int = 100, aluno_id: int | None = None, canal: str = "", status: str = "",
+                          tipo: str = "", termo: str = ""):
+    sql = "SELECT n.*, a.nome FROM notificacoes n LEFT JOIN alunos a ON a.id = n.aluno_id WHERE 1=1"
+    params: list = []
+    for coluna, valor in (("n.aluno_id", aluno_id), ("n.canal", canal), ("n.status", status), ("n.tipo", tipo)):
+        if valor:
+            sql += f" AND {coluna} = ?"
+            params.append(valor)
+    if termo:
+        sql += " AND lower(a.nome) LIKE lower(?)"
+        params.append(f"%{termo}%")
     sql += " ORDER BY n.id DESC LIMIT ?"
     with conectar() as con:
-        return con.execute(sql, params + (limite,)).fetchall()
+        return con.execute(sql, params + [limite]).fetchall()
+
+
+def fila_envio(aluno_id: int | None = None) -> list[dict]:
+    """Avisos esperando o envio manual (modo "pelo meu WhatsApp/e-mail")."""
+    sql = ("SELECT n.*, a.nome FROM notificacoes n LEFT JOIN alunos a ON a.id = n.aluno_id "
+           "WHERE n.status = 'pendente'")
+    params: tuple = ()
+    if aluno_id:
+        sql += " AND n.aluno_id = ?"
+        params = (aluno_id,)
+    with conectar() as con:
+        return [dict(r) for r in con.execute(sql + " ORDER BY n.id", params).fetchall()]
+
+
+def contar_fila() -> int:
+    with conectar() as con:
+        return con.execute("SELECT COUNT(*) FROM notificacoes WHERE status = 'pendente'").fetchone()[0]
+
+
+def marcar_notificacao(notificacao_id: int, status: str) -> dict | None:
+    with conectar() as con:
+        n = con.execute("SELECT * FROM notificacoes WHERE id = ?", (notificacao_id,)).fetchone()
+        if n:
+            con.execute("UPDATE notificacoes SET status = ? WHERE id = ?", (status, notificacao_id))
+    return dict(n) if n else None
+
+
+# ---------------------------------------------------------------- reajustes
+
+def listar_reajustes():
+    with conectar() as con:
+        return con.execute(
+            "SELECT r.*, p.nome AS plano_nome FROM reajustes r JOIN planos p ON p.id = r.plano_id "
+            "ORDER BY CASE r.status WHEN 'agendado' THEN 0 ELSE 1 END, r.vigencia DESC, r.id DESC"
+        ).fetchall()
+
+
+def reajustes_agendados() -> list[dict]:
+    with conectar() as con:
+        return [dict(r) for r in con.execute(
+            "SELECT r.*, p.nome AS plano_nome FROM reajustes r JOIN planos p ON p.id = r.plano_id "
+            "WHERE r.status = 'agendado' ORDER BY r.vigencia").fetchall()]
+
+
+def valor_do_plano(plano_id, data_ref: str, valor_atual=None):
+    """Valor do plano para um vencimento: com reajuste agendado e vigência até essa data, vale o novo."""
+    if not plano_id:
+        return valor_atual
+    with conectar() as con:
+        r = con.execute(
+            "SELECT valor_novo FROM reajustes WHERE plano_id = ? AND status = 'agendado' AND vigencia <= ? "
+            "ORDER BY vigencia DESC LIMIT 1", (plano_id, data_ref)).fetchone()
+        if r:
+            return r[0]
+        if valor_atual is None:
+            linha = con.execute("SELECT valor FROM planos WHERE id = ?", (plano_id,)).fetchone()
+            return linha[0] if linha else None
+    return valor_atual
+
+
+def aplicar_reajustes() -> int:
+    """Na data de vigência, o valor novo passa a ser o valor do plano. Retorna quantos foram aplicados."""
+    with conectar() as con:
+        vencidos = con.execute(
+            "SELECT id, plano_id, valor_novo FROM reajustes WHERE status = 'agendado' AND vigencia <= ? "
+            "ORDER BY vigencia, id", (hoje().isoformat(),)).fetchall()
+        for r in vencidos:
+            con.execute("UPDATE planos SET valor = ? WHERE id = ?", (r["valor_novo"], r["plano_id"]))
+            con.execute("UPDATE reajustes SET status = 'aplicado', aplicado_em = ? WHERE id = ?", (agora(), r["id"]))
+    return len(vencidos)
 
 
 _cache_sistema: dict = {"quando": 0.0, "dados": {}}

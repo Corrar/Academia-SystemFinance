@@ -29,6 +29,24 @@
   <a class="acao-contato" href="{{ url_for('aluno_editar', aluno_id=aluno.id) }}">{{ icone('pencil', 22) }}Editar</a>
 </nav>
 
+{% if fila %}
+<section class="card fila-aluno" style="margin-bottom:18px">
+  <div class="card-titulo"><span class="ico p g-verde">{{ icone('fila', 17) }}</span>
+    <div><h2>Pronto para enviar</h2><p class="sub">a mensagem já está escrita: toque para abrir no seu WhatsApp ou e-mail</p></div></div>
+  <ul class="lista-cel">
+    {% for n in fila %}
+    <li data-item-fila><div class="item-cel">
+      <span class="icone-cel" aria-hidden="true">{{ icone('mail' if n.canal == 'email' else 'whatsapp', 18) }}</span>
+      <span class="corpo"><strong>{{ {'comprovante': 'Comprovante de pagamento', 'reajuste': 'Aviso de reajuste'}.get(n.tipo, 'Aviso de ' ~ n.tipo) }}</strong>
+        <small><span data-estado>{{ 'WhatsApp' if n.canal == 'whatsapp' else 'E-mail' }} · {{ n.destino }}</span></small></span>
+      <a class="btn sm {{ 'primario' if loop.first }}" href="{{ link_envio(n) }}" target="_blank" rel="noopener"
+         data-enviar-fila="{{ url_for('fila_marcar', notificacao_id=n.id) }}" data-csrf="{{ csrf_token }}">{{ icone('send', 14) }} Enviar</a>
+    </div></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <div class="grade-2">
   <article class="tcard t-{{ tom }} {{ {'a_vencer': 'realce-azul', 'vencido': 'realce-laranja', 'inadimplente': 'realce-vermelho'}.get(aluno.status, '') }}">
     <div class="tcard-head">
@@ -75,11 +93,13 @@
     <form method="post" action="{{ url_for('registrar_pagamento', aluno_id=aluno.id) }}">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
       <div class="form-grid">
-        <label class="campo"><span class="rotulo-campo">Valor (R$)</span><input name="valor" value="{{ '%.2f'|format(aluno.plano_valor or 0) }}" inputmode="decimal" required></label>
+        <label class="campo"><span class="rotulo-campo">Valor (R$)</span><input name="valor" value="{{ '%.2f'|format(valor_sugerido) }}" inputmode="decimal" required></label>
         <label class="campo"><span class="rotulo-campo">Data do pagamento</span><input type="date" name="data_pagamento" value="{{ hoje.isoformat() }}" required></label>
         <label class="campo"><span class="rotulo-campo">Forma</span><select name="forma">{% for f in formas %}<option>{{ f }}</option>{% endfor %}</select></label>
         <label class="campo"><span class="rotulo-campo">Nova validade</span><input type="date" name="nova_validade" value="{{ validade_sugerida }}" required></label>
       </div>
+      <label class="check" style="margin-top:16px"><input type="checkbox" name="comprovante" value="1" {{ 'checked' if (aluno.telefone and aluno.aceita_whatsapp) or (aluno.email and aluno.aceita_email) }}>
+        Enviar comprovante ao aluno {% if envio_modos.whatsapp == 'manual' %}<span class="ajuda">· fica pronto para você enviar pelo WhatsApp</span>{% endif %}</label>
       <div class="linha-botoes"><button class="btn primario">{{ icone('check', 15) }} Confirmar pagamento</button></div>
     </form>
   </section>

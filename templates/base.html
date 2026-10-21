@@ -5,30 +5,104 @@
   <meta name="robots" content="noindex, nofollow">
   <title>{% block titulo %}Painel{% endblock %} · {{ academia }}</title>
 </head>
-<body>
+<body class="painel">
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 {% set ep = request.endpoint or '' %}
 {% set menu = [
   ('dashboard', 'layout', 'Dashboard', 'Início', ep == 'dashboard'),
-  ('alunos', 'users', 'Inscritos', 'Inscritos', ep.startswith('aluno')),
+  ('alunos', 'users', 'Inscritos', 'Inscritos', ep in ['alunos', 'aluno_detalhe', 'aluno_editar', 'aluno_novo']),
   ('validade', 'calendar', 'Validade', 'Validade', ep == 'validade'),
   ('financeiro', 'wallet', 'Financeiro', 'Financeiro', ep == 'financeiro'),
   ('avisos', 'bell', 'Avisos', 'Avisos', ep == 'avisos'),
   ('planos', 'tag', 'Planos', 'Planos', ep == 'planos'),
   ('configuracoes', 'settings', 'Configurações', 'Ajustes', ep == 'configuracoes'),
 ] %}
+
+{# Sidebar lateral do desktop (padrão Sidebar do shadcn/ui): aberta com nomes ou recolhida só com ícones #}
+{% macro item(destino, ic, rotulo, ativo=false, contador=none, atalho=none) -%}
+  <a class="lateral-item {{ 'ativo' if ativo }}" href="{{ destino }}" title="{{ rotulo }}" {{ 'aria-current="page"'|safe if ativo }}>
+    {{ icone(ic, 18) }}<span class="texto">{{ rotulo }}</span>
+    {%- if contador %}<span class="contagem">{{ contador if contador < 100 else '99+' }}<span class="sr-only"> pendente(s)</span></span>{% endif %}
+  </a>
+{%- endmacro %}
+<aside class="lateral" aria-label="Navegação lateral">
+  <div class="lateral-topo">
+    <a class="lateral-marca" href="{{ url_for('dashboard') }}" title="{{ academia }} – início">
+      <img class="marca-grande" src="{{ url_for('static', filename='logo-horizontal.svg') }}" alt="{{ academia }} – início" width="122" height="34">
+      <img class="marca-icone" src="{{ url_for('static', filename='favicon.svg') }}" alt="" width="32" height="32">
+    </a>
+    <button type="button" class="lateral-recolher" data-recolher-lateral aria-label="Recolher menu lateral" title="Recolher menu lateral (Ctrl+B)">{{ icone('painel', 18) }}</button>
+  </div>
+
+  <form class="lateral-busca" role="search" method="get" action="{{ url_for('alunos') }}">
+    <label for="busca-rapida" class="lateral-item" title="Busca rápida (Ctrl+K)">
+      {{ icone('search', 18) }}<span class="sr-only">Busca rápida de inscritos</span>
+      <input id="busca-rapida" name="q" type="search" placeholder="Busca rápida" autocomplete="off" class="texto">
+      <kbd class="texto" aria-hidden="true">Ctrl K</kbd>
+    </label>
+  </form>
+
+  <nav class="lateral-nav" aria-label="Menu principal">
+    <div class="lateral-grupo">
+      {{ item(url_for('fila'), 'fila', 'Fila de envio', ep == 'fila', fila_total) }}
+      {{ item(url_for('avisos'), 'bell', 'Avisos', ep == 'avisos') }}
+    </div>
+    <div class="lateral-grupo">
+      <p class="lateral-rotulo texto">Menu</p>
+      {{ item(url_for('dashboard'), 'grade', 'Dashboard', ep == 'dashboard') }}
+      {{ item(url_for('alunos'), 'users', 'Inscritos', ep in ['alunos', 'aluno_detalhe', 'aluno_editar', 'aluno_novo']) }}
+      {{ item(url_for('alunos_lote'), 'prancheta', 'Cadastro rápido', ep == 'alunos_lote') }}
+      {{ item(url_for('validade'), 'aba-validade', 'Validade', ep == 'validade') }}
+      {{ item(url_for('financeiro'), 'grafico', 'Financeiro', ep == 'financeiro') }}
+      {{ item(url_for('planos'), 'tag', 'Planos', ep == 'planos') }}
+      {{ item(url_for('reajustes'), 'reajuste', 'Reajuste', ep == 'reajustes') }}
+    </div>
+  </nav>
+
+  {# cartão de status do envio (no lugar do "plano atual" da referência) #}
+  {% if fila_total %}
+    {% set c_titulo, c_texto, c_botao, c_link, c_ic = (fila_total ~ ' aviso' ~ ('s' if fila_total != 1) ~ ' para enviar', 'Mensagens prontas: envie pelo seu WhatsApp ou e-mail com um toque.', 'Abrir fila de envio', url_for('fila'), 'fila') %}
+  {% elif not envio_modos.automatico %}
+    {% set c_titulo, c_texto, c_botao, c_link, c_ic = ('Envio manual', 'Você envia da fila com um toque. Ative o envio automático quando quiser.', 'Configurar envio', url_for('configuracoes') ~ '#envio', 'raio') %}
+  {% else %}
+    {% set c_titulo, c_texto, c_botao, c_link, c_ic = ('Envio automático', 'E-mail e WhatsApp configurados. A cobrança roda todo dia às 9h.', 'Ver avisos', url_for('avisos'), 'enviado') %}
+  {% endif %}
+  <div class="lateral-cartao">
+    <a class="cartao-icone" href="{{ c_link }}" title="{{ c_titulo }}">{{ icone(c_ic, 18) }}<span class="sr-only">{{ c_titulo }}</span></a>
+    <div class="texto cartao-corpo">
+      <p class="cartao-rotulo">Envio de avisos</p>
+      <p class="cartao-titulo">{{ c_titulo }}</p>
+      <p class="cartao-texto">{{ c_texto }}</p>
+      <a class="btn bloco" href="{{ c_link }}">{{ icone('raio' if c_ic == 'raio' else 'arrow-right', 15) }} {{ c_botao }}</a>
+    </div>
+  </div>
+
+  <div class="lateral-grupo lateral-rodape">
+    {{ item(url_for('configuracoes'), 'settings', 'Configurações', ep == 'configuracoes') }}
+    <button type="button" class="lateral-item" data-alternar-tema title="Alternar modo claro ou escuro">
+      <span class="lua">{{ icone('moon', 18) }}</span><span class="sol">{{ icone('sun', 18) }}</span><span class="texto" data-rotulo-tema>Modo escuro</span>
+    </button>
+    {{ item(url_for('privacidade'), 'ajuda', 'Documentos e ajuda') }}
+  </div>
+
+  <details class="lateral-usuario">
+    <summary title="{{ usuario }} · Administrador">
+      <span class="avatar" aria-hidden="true">{{ usuario[:1] }}</span>
+      <span class="texto usuario-nome"><strong>{{ usuario }}</strong><small>Administrador</small></span>
+      <span class="texto">{{ icone('seletor', 16) }}</span>
+    </summary>
+    <div class="usuario-menu">
+      <a href="{{ url_for('configuracoes') }}">{{ icone('settings', 16) }} Configurações</a>
+      <a class="perigo" href="{{ url_for('logout') }}">{{ icone('logout', 16) }} Sair</a>
+    </div>
+  </details>
+</aside>
+
+{# Cabeçalho do celular (no desktop a navegação fica na sidebar) #}
 <header class="topbar">
   <a class="logo" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='logo-horizontal.svg') }}" alt="{{ academia }} – início" width="122" height="34"></a>
-  <nav class="tabs" aria-label="Menu principal">
-    {% for destino, ic, rotulo, curto, ativo in menu %}
-      <a href="{{ url_for(destino) }}" class="{{ 'ativo' if ativo }}" {{ 'aria-current="page"'|safe if ativo }}>{{ icone(ic, 16) }} {{ rotulo }}</a>
-    {% endfor %}
-  </nav>
   <div class="usuario">
     {% set classe = '' %}{% include "_tema_btn.html" %}
-    <div><strong>{{ usuario }}</strong><small>Administrador · Geral</small></div>
-    <span class="avatar" aria-hidden="true">{{ usuario[:1] }}</span>
-    <a class="sair" href="{{ url_for('logout') }}" title="Sair" aria-label="Sair do sistema">{{ icone('logout', 18) }}</a>
   </div>
 </header>
 
@@ -58,15 +132,16 @@
 {% include "_rodape.html" %}
 
 {# Barra de abas inferior (só no celular): a aba atual vira um círculo preenchido #}
-{% set no_menu = ep in ['avisos', 'planos', 'configuracoes'] %}
+{% set no_menu = ep not in ['dashboard', 'validade', 'financeiro', 'alunos', 'aluno_detalhe', 'aluno_editar', 'aluno_novo'] %}
+{% set icones_aba = {'dashboard': 'aba-inicio', 'alunos': 'aba-inscritos', 'validade': 'aba-validade', 'financeiro': 'aba-financeiro'} %}
 <nav class="barra-abas" aria-label="Menu">
   {% for destino, ic, rotulo, curto, ativo in menu[:4] %}
     <a href="{{ url_for(destino) }}" class="{{ 'ativo' if ativo }}" {{ 'aria-current="page"'|safe if ativo }}>
-      <span class="aba-ic">{{ icone('home' if destino == 'dashboard' else ic, 24) }}</span><span class="aba-rotulo">{{ curto }}</span>
+      <span class="aba-ic">{{ icone(icones_aba[destino], 24) }}</span><span class="aba-rotulo">{{ curto }}</span>
     </a>
   {% endfor %}
   <button type="button" class="{{ 'ativo' if no_menu }}" data-abrir-mais aria-haspopup="dialog" aria-controls="mais">
-    <span class="aba-ic">{{ icone('menu', 24) }}</span><span class="aba-rotulo">Menu</span>
+    <span class="aba-ic">{{ icone('aba-menu', 24) }}</span><span class="aba-rotulo">Menu</span>
   </button>
 </nav>
 
@@ -92,10 +167,10 @@
       <div class="menu-cartoes">
         {% for destino, ic, rotulo in [
           (url_for('aluno_novo'), 'user-plus', 'Novo aluno'),
-          (url_for('alunos'), 'users', 'Inscritos'),
-          (url_for('validade'), 'calendar', 'Validade'),
-          (url_for('financeiro'), 'wallet', 'Financeiro'),
+          (url_for('alunos_lote'), 'prancheta', 'Cadastro rápido'),
+          (url_for('fila'), 'fila', 'Fila de envio' ~ (' (' ~ fila_total ~ ')' if fila_total else '')),
           (url_for('dashboard') ~ '#inadimplentes', 'alert', 'Inadimplentes'),
+          (url_for('reajustes'), 'reajuste', 'Aviso de reajuste'),
           (url_for('avisos'), 'bell', 'Avisos enviados'),
         ] %}
           <a class="menu-cartao" data-item href="{{ destino }}">{{ icone(ic, 26) }}<span>{{ rotulo }}</span></a>
@@ -107,6 +182,7 @@
       <h3 id="menu-cobranca">Cobrar e receber</h3>
       {{ linha(url_for('avisos'), 'bell', 'Avisos de vencimento', ep == 'avisos') }}
       {{ linha(url_for('planos'), 'tag', 'Planos e valores', ep == 'planos') }}
+      {{ linha(url_for('reajustes'), 'reajuste', 'Reajuste da mensalidade', ep == 'reajustes') }}
       {{ linha(url_for('financeiro'), 'receipt', 'Pagamentos recebidos') }}
       <form method="post" action="{{ url_for('executar_cobranca') }}" data-item
             data-confirmar="Os avisos de vencimento do dia serão enviados agora por e-mail e WhatsApp." data-titulo="Executar a cobrança agora?" data-ok="Enviar avisos">
@@ -118,6 +194,7 @@
     <section class="menu-secao" aria-labelledby="menu-conta">
       <h3 id="menu-conta">Conta e sistema</h3>
       {{ linha(url_for('configuracoes'), 'settings', 'Configurações', ep == 'configuracoes') }}
+      {{ linha(url_for('alunos_lote'), 'prancheta', 'Cadastro rápido (fichas em papel)', ep == 'alunos_lote') }}
       <button type="button" class="menu-linha" data-item data-alternar-tema>
         <span data-rotulo-tema>Usar modo escuro</span><span class="lua">{{ icone('moon', 24) }}</span><span class="sol">{{ icone('sun', 24) }}</span>
       </button>

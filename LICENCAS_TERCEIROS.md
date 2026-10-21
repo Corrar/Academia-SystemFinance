@@ -5,12 +5,13 @@ O sistema não usa nenhuma imagem ou foto de banco de imagens. Os recursos visua
 
 | Componente | Onde | Licença |
 |---|---|---|
-| Ícones **Lucide** (desenhos SVG) | `icones.py` | ISC (texto completo abaixo) |
+| Ícones **Lucide** (desenhos SVG, a biblioteca de ícones do shadcn/ui, pacote `lucide-static` 0.469.0) | `icones.py` | ISC (texto completo abaixo) |
 | Fonte **Inter** (usada onde a fonte da Apple não existe) | `static/fonts/` | SIL Open Font License 1.1 (`static/fonts/OFL.txt`) |
 | Fonte **Kaushan Script** (só os contornos das letras, convertidos em desenho na escrita da logo) | `static/logo-horizontal.svg`, `static/favicon.svg`, `static/*.png`, `docs/assets/banner.svg` | SIL Open Font License 1.1, que permite usar a fonte em logos e imagens |
 | Sistema de design **shadcn/ui** (tokens de cor, raios e receitas dos componentes, adaptados para CSS puro) | `static/style.css`, `static/interface.js` | MIT (texto completo abaixo) |
 | **Flask**, **Jinja2**, **MarkupSafe**, **Werkzeug** | dependências Python | BSD-3-Clause |
 | **requests** | dependência Python | Apache 2.0 |
+| **openpyxl** (leitura de planilhas .xlsx no cadastro rápido) | dependência Python | MIT |
 
 A logo é uma **recriação em vetor da logo da Corpu's Academia**, enviada pelo dono do projeto
 (fundo vinho listrado, nome em letra cursiva vermelha com contorno dourado). Para usar o arquivo original,

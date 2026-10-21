@@ -1,0 +1,79 @@
+{#- E-mail genérico (reajuste, comprovante) no mesmo visual do aviso de vencimento.
+    `paragrafos` já vêm escapados pelo notificacoes.py (podem ter <strong>). -#}
+{%- set cores = {
+  'azul': {'fundo': '#eef3ff', 'icone': '#dce6ff', 'texto': '#2457e6', 'borda': '#2457e6', 'simbolo': '&#128197;'},
+  'amarelo': {'fundo': '#fff7e8', 'icone': '#ffe9c2', 'texto': '#b45309', 'borda': '#f59e0b', 'simbolo': '&#128226;'},
+  'verde': {'fundo': '#ecfdf3', 'icone': '#d1fadf', 'texto': '#15803d', 'borda': '#22c55e', 'simbolo': '&#10003;'},
+  'vermelho': {'fundo': '#fef2f2', 'icone': '#fde0e0', 'texto': '#dc2626', 'borda': '#ef4444', 'simbolo': '!'},
+}[tom] -%}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ titulo }} · {{ academia }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f6f8;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6f8;padding:32px 12px;">
+<tr><td align="center">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+    <tr><td align="center" style="padding:0 4px 18px;">
+      {% if empresa.url_publica %}
+        <img src="{{ empresa.url_publica }}/static/logo-email.png" width="200" height="56" alt="{{ academia }}" style="display:block;border:0;">
+      {% else %}
+        <div style="font-family:'Brush Script MT','Segoe Script',cursive;font-size:30px;font-weight:700;color:#e3221d;">{{ academia }}</div>
+      {% endif %}
+    </td></tr>
+    <tr><td style="background:#ffffff;border:1.5px solid {{ cores.borda }};border-radius:16px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="background:{{ cores.fundo }};padding:14px 20px;border-radius:14px 14px 0 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="width:32px;height:32px;border-radius:9px;background:{{ cores.icone }};text-align:center;vertical-align:middle;font-size:15px;color:{{ cores.texto }};">{{ cores.simbolo|safe }}</td>
+            <td style="padding-left:12px;">
+              <div style="font-weight:800;font-size:14px;color:#0f172a;">{{ rotulo }}</div>
+              <div style="font-size:12px;color:#5b6576;">{{ detalhe }}</div>
+            </td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:22px 20px 6px;">
+          <div style="font-size:13px;font-weight:700;color:#1e1b6b;margin-bottom:4px;">Olá, {{ primeiro_nome }} &#128075;</div>
+          <div style="font-size:20px;font-weight:800;letter-spacing:-0.02em;line-height:1.25;margin-bottom:10px;">{{ titulo }}</div>
+          {% for p in paragrafos %}
+          <div style="font-size:14px;color:#475569;line-height:1.55;margin-bottom:8px;">{{ p|safe }}</div>
+          {% endfor %}
+        </td></tr>
+        <tr><td style="padding:10px 20px 4px;">
+          <span style="display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:4px 11px;font-size:11px;font-weight:700;text-transform:uppercase;color:#334155;">{{ plano }}</span>
+          <span style="display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:4px 11px;font-size:11px;font-weight:700;text-transform:uppercase;color:#334155;">{{ aluno.nome }}</span>
+        </td></tr>
+        <tr><td style="padding:16px 20px 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eef0f3;">
+            <tr>
+              {% for rot, val in metricas %}
+              <td style="padding-top:14px;" {% if loop.last and not loop.first %}align="right"{% endif %}>
+                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#5b6576;">{{ rot }}</div>
+                <div style="font-size:16px;font-weight:800;color:{{ cores.texto if loop.last else '#0f172a' }};">{{ val }}</div>
+              </td>
+              {% endfor %}
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td style="padding:18px 6px;font-size:12px;color:#5b6576;line-height:1.6;text-align:center;">
+      {% if telefone %}Dúvidas? Fale com a gente: <strong style="color:#334155;">{{ telefone }}</strong><br>{% endif %}
+      Não quer mais receber mensagens por e-mail? Responda esta mensagem pedindo o descadastro.
+      <br><br>
+      <strong style="color:#334155;">{{ empresa.razao_social or academia }}</strong>
+      {% if empresa.cnpj %} · CNPJ {{ empresa.cnpj }}{% endif %}
+      {% if empresa.endereco %}<br>{{ empresa.endereco }}{% endif %}
+      {% if empresa.url_publica %}
+      <br><a href="{{ empresa.url_publica }}/privacidade" style="color:#2457e6;">Política de privacidade</a>
+      · <a href="{{ empresa.url_publica }}/termos" style="color:#2457e6;">Termos</a>
+      {% endif %}
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

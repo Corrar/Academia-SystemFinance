@@ -51,12 +51,52 @@
     </div></div>
   </section>
 
-  <section class="card">
+  <section class="card" id="envio">
     <div class="card-titulo">
       <span class="ico p g-azul">{{ icone('mail', 17) }}</span>
-      <div><h2>Envio por e-mail (SMTP)</h2><p class="sub">{% if v.smtp_host %}<span class="pill verde">{{ icone('check', 11) }} Configurado</span>{% else %}<span class="pill">{{ icone('lock', 11) }} Modo simulado</span>{% endif %}</p></div>
+      <div><h2>Envio por e-mail</h2><p class="sub">
+        {% if v.email_provedor in ['smtp', 'resend'] %}<span class="pill verde">{{ icone('check', 11) }} Automático · {{ nomes_email[v.email_provedor] }}</span>
+        {% elif v.email_provedor == 'manual' %}<span class="pill azul">{{ icone('fila', 11) }} Pronto para usar · você envia da fila</span>
+        {% else %}<span class="pill">{{ icone('lock', 11) }} Modo simulado</span>{% endif %}</p></div>
     </div>
 
+    <p class="rotulo-campo" id="rotulo-email" style="margin:0 0 8px">Como enviar os e-mails</p>
+    <div class="opcoes" role="radiogroup" aria-labelledby="rotulo-email">
+      {% for chave, desc, ic, cor in provedores_email %}
+      <label class="opcao">
+        <input type="radio" name="email_provedor" value="{{ chave }}" {{ 'checked' if v.email_provedor == chave }}>
+        <span class="radio"></span>
+        <span class="ico p {{ cor }}">{{ icone(ic, 17) }}</span>
+        <strong>{{ nomes_email[chave] }}</strong>
+        <small>{{ desc }}</small>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="em-grupo" data-email="manual">
+      <div class="info">{{ icone('info', 16) }}<div>
+        <strong>Já funciona, sem configurar nada.</strong> A cobrança diária monta os e-mails e coloca na
+        <a href="{{ url_for('fila') }}">fila de envio</a>. Toque em <em>Abrir e-mail</em>: o seu aplicativo de e-mail abre com o destinatário,
+        o assunto e a mensagem prontos. Para os e-mails saírem sozinhos, escolha <strong>Servidor de e-mail</strong> (Gmail em 2 minutos) ou <strong>Resend</strong>.
+      </div></div>
+    </div>
+    <div class="em-grupo" data-email="simulado">
+      <div class="info">{{ icone('lock', 16) }}<div>No modo simulado os e-mails só ficam registrados no histórico, sem envio. Use para testar.</div></div>
+    </div>
+    <div class="em-grupo" data-email="resend">
+      <div class="form-grid">
+        <label class="campo"><span class="rotulo-campo">Chave de API do Resend{% if 'resend_api_key' in salvos %} <span class="ajuda">· salva (em branco mantém)</span>{% endif %}</span>
+          <input name="resend_api_key" type="password" placeholder="{{ '••••••••' if 'resend_api_key' in salvos else 're_...' }}" autocomplete="new-password"></label>
+        <label class="campo"><span class="rotulo-campo">Remetente <span class="ajuda">· e-mail do seu domínio verificado</span></span>
+          <input name="resend_remetente" type="email" value="{{ v.resend_remetente }}" placeholder="avisos@suaacademia.com.br" autocomplete="off"></label>
+      </div>
+      <div class="info" style="margin-top:14px">{{ icone('info', 16) }}<div>
+        Em <a href="https://resend.com/domains" target="_blank" rel="noopener">resend.com</a> (plano gratuito: 3.000 e-mails por mês), adicione o domínio da academia
+        e cadastre os registros DNS indicados. Depois crie uma <strong>API key</strong> com permissão de envio e cole aqui. Sem domínio verificado o Resend só envia para o seu próprio e-mail.
+      </div></div>
+    </div>
+
+    <div class="em-grupo" data-email="smtp">
     <p class="rotulo-campo" style="margin:0 0 8px">Seu provedor</p>
     <div class="presets">
       {% for nome, (host, porta, seg) in presets.items() %}
@@ -86,6 +126,7 @@
       Use essa senha de 16 letras aqui, não a senha normal da conta.
       <strong>Outlook/Hotmail:</strong> contas pessoais podem exigir senha de app em <a href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noopener">account.live.com</a>.
     </div></div>
+    </div>
   </section>
 
 {% macro campo(nome, rotulo, ph='', ajuda='') %}
@@ -103,7 +144,10 @@
   <section class="card" id="whatsapp">
     <div class="card-titulo">
       <span class="ico p g-verde">{{ icone('whatsapp', 17) }}</span>
-      <div><h2>Envio por WhatsApp</h2><p class="sub">{% if v.wa_provedor != 'simulado' %}<span class="pill verde">{{ icone('check', 11) }} Ativo</span>{% else %}<span class="pill">{{ icone('lock', 11) }} Modo simulado</span>{% endif %}</p></div>
+      <div><h2>Envio por WhatsApp</h2><p class="sub">
+        {% if v.wa_provedor == 'manual' %}<span class="pill azul">{{ icone('fila', 11) }} Pronto para usar · você envia da fila</span>
+        {% elif v.wa_provedor == 'simulado' %}<span class="pill">{{ icone('lock', 11) }} Modo simulado</span>
+        {% else %}<span class="pill verde">{{ icone('check', 11) }} Automático · {{ nomes_wa[v.wa_provedor] }}</span>{% endif %}</p></div>
     </div>
 
     <p class="rotulo-campo" id="rotulo-provedor" style="margin:0 0 8px">Selecione o provedor</p>
@@ -113,14 +157,22 @@
         <input type="radio" name="wa_provedor" value="{{ chave }}" {{ 'checked' if v.wa_provedor == chave }}>
         <span class="radio"></span>
         <span class="ico p {{ cor }}">{{ icone(ic, 17) }}</span>
-        <strong>{{ {'simulado': 'Simulado', 'zapi': 'Z-API', 'evolution': 'Evolution API', 'meta': 'Meta Cloud API', 'twilio': 'Twilio'}[chave] }}</strong>
+        <strong>{{ nomes_wa[chave] }}</strong>
         <small>{{ desc }}</small>
       </label>
       {% endfor %}
     </div>
 
+    <div class="wa-grupo" data-provedor="manual">
+      <div class="info">{{ icone('info', 16) }}<div>
+        <strong>Já funciona, sem custo e sem cadastro.</strong> A cobrança diária (9h) monta as mensagens e coloca na
+        <a href="{{ url_for('fila') }}">fila de envio</a>. No celular ou no computador, toque em <em>Abrir no WhatsApp</em>:
+        a conversa do aluno abre com o texto pronto e você só toca em enviar. Use o WhatsApp (ou WhatsApp Business) da academia.
+        Para envio 100% automático, escolha um provedor ao lado.
+      </div></div>
+    </div>
     <div class="wa-grupo" data-provedor="simulado">
-      <div class="info">{{ icone('lock', 16) }}<div>No modo simulado as mensagens ficam só registradas no histórico de avisos. Para enviar sem nenhum provedor, use o botão <strong>Abrir no WhatsApp</strong> na ficha do aluno: ele abre o WhatsApp com a mensagem pronta.</div></div>
+      <div class="info">{{ icone('lock', 16) }}<div>No modo simulado as mensagens ficam só registradas no histórico de avisos, sem envio. Use para testar.</div></div>
     </div>
 
     <div class="wa-grupo" data-provedor="zapi">
@@ -200,10 +252,13 @@
   // mostra só os campos do provedor de WhatsApp escolhido
   const radios = document.querySelectorAll('input[name=wa_provedor]');
   function mostrarProvedor() {
-    const atual = document.querySelector('input[name=wa_provedor]:checked')?.value || 'simulado';
+    const atual = document.querySelector('input[name=wa_provedor]:checked')?.value || 'manual';
     document.querySelectorAll('.wa-grupo').forEach(g => g.hidden = g.dataset.provedor !== atual);
+    const email = document.querySelector('input[name=email_provedor]:checked')?.value || 'manual';
+    document.querySelectorAll('.em-grupo').forEach(g => g.hidden = g.dataset.email !== email);
   }
   radios.forEach(r => r.addEventListener('change', mostrarProvedor));
+  document.querySelectorAll('input[name=email_provedor]').forEach(r => r.addEventListener('change', mostrarProvedor));
   mostrarProvedor();
 
   document.querySelectorAll('.presets [data-host]').forEach(b => b.addEventListener('click', () => {

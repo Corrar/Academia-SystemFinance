@@ -7,6 +7,7 @@
     <h1>{{ 'Novo aluno' if novo else aluno.nome }}</h1>
     <p class="sub">{{ 'Cadastre um novo mensalista.' if novo else 'Atualize os dados do cadastro.' }}</p>
   </div>
+  {% if novo %}<a class="btn" href="{{ url_for('alunos_lote') }}">{{ icone('prancheta', 15) }} Várias fichas de uma vez</a>{% endif %}
 </div>
 
 <form method="post">
@@ -72,6 +73,7 @@
 
   <div class="linha-botoes">
     <button type="submit" class="btn primario">{{ icone('check', 15) }} Salvar</button>
+    {% if novo %}<button type="submit" class="btn" name="proximo" value="1">{{ icone('user-plus', 15) }} Salvar e cadastrar o próximo</button>{% endif %}
     <a class="btn" href="{{ url_for('aluno_detalhe', aluno_id=aluno.id) if not novo else url_for('alunos') }}">Cancelar</a>
   </div>
 </form>

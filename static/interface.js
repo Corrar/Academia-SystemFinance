@@ -96,6 +96,94 @@
     if (campo) campo.addEventListener("input", function () { filtrar(campo.value); });
   }
 
+  // ---------------- sidebar lateral (desktop) ----------------
+  var raiz = document.documentElement;
+  var lateral = document.querySelector(".lateral");
+  if (lateral) {
+    var botaoLateral = lateral.querySelector("[data-recolher-lateral]");
+    var busca = document.getElementById("busca-rapida");
+    var recolhida = function () { return raiz.dataset.lateral === "recolhida"; };
+    var rotular = function () {
+      var r = recolhida();
+      botaoLateral.setAttribute("aria-label", r ? "Abrir menu lateral" : "Recolher menu lateral");
+      botaoLateral.setAttribute("title", (r ? "Abrir" : "Recolher") + " menu lateral (Ctrl+B)");
+      botaoLateral.setAttribute("aria-expanded", r ? "false" : "true");
+    };
+    var alternar = function (abrir) {
+      raiz.dataset.lateral = (abrir === undefined ? recolhida() : abrir) ? "aberta" : "recolhida";
+      try { localStorage.setItem("lateral", raiz.dataset.lateral); } catch (e) {}
+      rotular();
+    };
+    rotular();
+    botaoLateral.addEventListener("click", function () { alternar(); });
+    // na versão recolhida, tocar na lupa abre a sidebar e já foca a busca
+    lateral.querySelector(".lateral-busca label").addEventListener("click", function (e) {
+      if (recolhida()) { e.preventDefault(); alternar(true); setTimeout(function () { busca.focus(); }, 60); }
+    });
+    document.addEventListener("keydown", function (e) {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      var tecla = e.key.toLowerCase();
+      if ((tecla !== "k" && tecla !== "b") || getComputedStyle(lateral).display === "none") return;
+      e.preventDefault();
+      if (tecla === "b") return alternar();
+      if (recolhida()) alternar(true);
+      setTimeout(function () { busca.focus(); busca.select(); }, 60);
+    });
+    // o menu do usuário fecha ao clicar fora ou com Esc
+    var usuario = lateral.querySelector(".lateral-usuario");
+    document.addEventListener("click", function (e) { if (usuario.open && !usuario.contains(e.target)) usuario.open = false; });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && usuario.open) { usuario.open = false; usuario.querySelector("summary").focus(); } });
+  }
+
+  // ---------------- fila de envio: abrir o WhatsApp/e-mail marca como enviado ----------------
+  document.querySelectorAll("[data-enviar-fila]").forEach(function (link) {
+    link.addEventListener("click", function () {
+      var cartao = link.closest("[data-item-fila]");
+      var dados = new FormData();
+      dados.append("csrf", link.dataset.csrf);
+      fetch(link.dataset.enviarFila, { method: "POST", body: dados, headers: { "X-Requested-With": "fetch" }, credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (r) {
+          if (!r || !cartao) return;
+          cartao.classList.add("enviado");
+          cartao.querySelector("[data-estado]").textContent = "Enviado ✓";
+          document.querySelectorAll("[data-contador-fila]").forEach(function (c) { c.textContent = r.restantes; });
+        });
+    });
+  });
+
+  // ---------------- cadastro rápido: Enter pula de campo, telefone formatado, contador ----------------
+  var lote = document.getElementById("lote");
+  if (lote) {
+    var campos = function () { return Array.prototype.slice.call(lote.querySelectorAll(".fichas input, .fichas select")); };
+    lote.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" || !e.target.closest(".fichas")) return;
+      e.preventDefault();
+      var lista = campos(), i = lista.indexOf(e.target) + (e.shiftKey ? -1 : 1);
+      if (lista[i]) lista[i].focus();
+    });
+    var formatar = function (campo) {
+      var d = campo.value.replace(/\D/g, "");
+      if (d.length === 13 && d.indexOf("55") === 0) d = d.slice(2);
+      if (d.length === 11) campo.value = "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7);
+      else if (d.length === 10) campo.value = "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
+    };
+    var resumo = lote.querySelector("[data-resumo-lote]");
+    var contar = function () {
+      var n = lote.querySelectorAll(".fichas input[name=nome]");
+      var cheias = Array.prototype.filter.call(n, function (c) { return c.value.trim(); }).length;
+      if (resumo) resumo.textContent = cheias + " ficha(s) preenchida(s)";
+    };
+    lote.addEventListener("focusout", function (e) { if (e.target.matches("[data-telefone]")) formatar(e.target); });
+    lote.addEventListener("input", function (e) { if (e.target.name === "nome") contar(); });
+  }
+  document.querySelectorAll(".arquivo-zona input[type=file]").forEach(function (entrada) {
+    entrada.addEventListener("change", function () {
+      var zona = entrada.closest(".arquivo-zona");
+      if (entrada.files[0]) { zona.classList.add("com-arquivo"); zona.querySelector("strong").textContent = entrada.files[0].name; }
+    });
+  });
+
   // ---------------- confirmações (AlertDialog) ----------------
   // <form data-confirmar="texto" data-titulo="..." data-ok="Rótulo" data-perigo>
   var alerta = document.getElementById("confirmar");

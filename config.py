@@ -91,6 +91,12 @@ MAX_LEMBRETES_SEMANAIS = _int("MAX_LEMBRETES_SEMANAIS", 4)
 # Histórico de avisos é apagado depois de N dias (minimização de dados - LGPD)
 RETENCAO_AVISOS_DIAS = _int("RETENCAO_AVISOS_DIAS", 365)
 
+# E-mail: manual (abre o seu app de e-mail com a mensagem pronta), smtp, resend ou simulado.
+# Sem escolha: smtp se houver servidor configurado, senão manual.
+EMAIL_PROVEDOR = _env("EMAIL_PROVEDOR").lower()
+RESEND_API_KEY = _env("RESEND_API_KEY")
+RESEND_REMETENTE = _env("RESEND_REMETENTE")
+
 SMTP_HOST = _env("SMTP_HOST")
 SMTP_PORTA = _int("SMTP_PORTA", 587)
 SMTP_USUARIO = _env("SMTP_USUARIO")
@@ -98,7 +104,8 @@ SMTP_SENHA = _env("SMTP_SENHA")
 SMTP_REMETENTE = _env("SMTP_REMETENTE") or SMTP_USUARIO
 SMTP_SEGURANCA = _env("SMTP_SEGURANCA", "tls").lower()
 
-WHATSAPP_PROVEDOR = _env("WHATSAPP_PROVEDOR", "simulado").lower()
+# WhatsApp: manual (abre o seu WhatsApp com a mensagem pronta, sem custo), zapi, evolution, meta, twilio ou simulado
+WHATSAPP_PROVEDOR = _env("WHATSAPP_PROVEDOR", "manual").lower()
 ZAPI_INSTANCIA = _env("ZAPI_INSTANCIA")
 ZAPI_TOKEN = _env("ZAPI_TOKEN")
 ZAPI_CLIENT_TOKEN = _env("ZAPI_CLIENT_TOKEN")

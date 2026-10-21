@@ -22,6 +22,8 @@ Revisão feita em 21/10/2026 sobre o sistema de cobrança (painel interno + pág
 | Consentimento de cookies | ✅ | Não há cookies de rastreamento, e as páginas públicas não criam nenhum cookie. O painel usa só um cookie de sessão **estritamente necessário** (login + proteção CSRF), com `HttpOnly`, `SameSite=Lax`, `Secure` (com `COOKIE_SEGURO=1`) e validade de 8 h. Cookie estritamente necessário dispensa banner de consentimento; a política de privacidade e a tela de login informam isso. Se um dia for incluído analytics, será preciso um banner de consentimento **antes** de carregá-lo. |
 | Formulários adequados à LGPD | ✅ | Cadastro com autorização separada de avisos por e-mail e por WhatsApp (respeitada no envio automático, no manual e no "Avisar todos"), registro de data e hora do aceite dos termos e da política, menção ao responsável legal no caso de menores e aviso para não registrar dados de saúde (dado sensível) nas observações. Todos os campos têm rótulo acessível. |
 | Coletar só o necessário | ✅ | **Data de nascimento removida** do cadastro (não é usada na cobrança). CPF marcado como opcional ("só se precisar emitir recibo ou nota"). O histórico de avisos é apagado automaticamente após `RETENCAO_AVISOS_DIAS` (365). |
+| Fichas em papel e importação | 🟡 | O cadastro rápido grava nas observações que o cadastro veio da ficha em papel (com a data) e aplica as autorizações de aviso marcadas para o lote; só marca o aceite dos termos se a opção "Assinaram os termos na ficha em papel" for ligada. **A academia deve guardar as fichas assinadas** como prova do consentimento. Telefones, e-mails e CPFs repetidos são recusados antes de gravar. |
+| Exportação da lista de inscritos | ✅ | A planilha exportada (com filtros) contém dados pessoais; é gerada só para o administrador logado, sem cache (`no-store`), e não é guardada no servidor. |
 | Direitos do titular (art. 18) | ✅ | Na ficha do aluno: **Exportar dados** (arquivo JSON com cadastro, pagamentos e avisos, para acesso e portabilidade) e **Apagar dados pessoais (anonimizar)**, que mantém só os valores pagos exigidos pela lei fiscal. Toda mensagem informa como deixar de receber avisos. |
 | Conformidade geral | 🟡 | Ver os itens 📋 em "O que a academia precisa fazer". |
 
@@ -62,6 +64,7 @@ com leitor de tela (NVDA no Windows ou VoiceOver no Mac/iPhone).
 
 | Risco | Status | Mitigação |
 |---|---|---|
+| Reajuste da mensalidade | 🟡 | O aviso de reajuste é enviado antes da vigência (o sistema alerta se houver menos de 30 dias), informa valor atual, valor novo e data, e vale só para vencimentos a partir dela; o valor é aplicado automaticamente na vigência e o reajuste pode ser cancelado. **Confira o que o contrato/termos dos alunos preveem** sobre reajuste (periodicidade e índice) antes de aplicar. |
 | Senha padrão `admin123` | 🟡 | Alerta fixo no painel enquanto a senha for a padrão. **Trocar `ADMIN_SENHA` no `.env`.** |
 | Chave de sessão fraca | ✅ | Se `SECRET_KEY` não for definida, é gerada uma chave aleatória de 256 bits, guardada em `.secret_key` (fora do Git). |
 | Força bruta no login | ✅ | Bloqueio por 15 min após 5 tentativas erradas. |

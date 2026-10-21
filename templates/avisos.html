@@ -16,22 +16,22 @@
 </div>
 
 <div class="modulos" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+  {% for canal, ic, cor, rotulo in [('email', 'mail', 'g-azul', 'E-mail'), ('whatsapp', 'whatsapp', 'g-verde', 'WhatsApp')] %}
+  {% set modo = modos[canal] %}
   <div class="modulo">
-    <div class="topo-kpi"><span class="ico g-azul">{{ icone('mail', 20) }}</span>
-      {% if cfg.email %}<span class="pill verde">{{ icone('check', 11) }} Ativo</span>{% else %}<span class="pill">{{ icone('lock', 11) }} Simulado</span>{% endif %}
+    <div class="topo-kpi"><span class="ico {{ cor }}">{{ icone(ic, 20) }}</span>
+      {% if modo == 'manual' %}<span class="pill azul">{{ icone('fila', 11) }} Você envia</span>
+      {% elif modo == 'simulado' %}<span class="pill">{{ icone('lock', 11) }} Simulado</span>
+      {% else %}<span class="pill verde">{{ icone('check', 11) }} Automático</span>{% endif %}
     </div>
-    <h2>E-mail</h2>
-    <p class="sub">{{ cfg.email or 'Servidor SMTP não configurado' }}</p>
-    <div class="linha-botoes" style="margin-top:14px"><a class="btn sm" href="{{ url_for('configuracoes') }}">{{ icone('settings', 14) }} Configurar</a></div>
-  </div>
-  <div class="modulo">
-    <div class="topo-kpi"><span class="ico g-verde">{{ icone('whatsapp', 20) }}</span>
-      {% if cfg.whatsapp %}<span class="pill verde">{{ icone('check', 11) }} Ativo</span>{% else %}<span class="pill">{{ icone('lock', 11) }} Simulado</span>{% endif %}
+    <h2>{{ rotulo }}</h2>
+    <p class="sub">{{ modos[canal ~ '_nome'] }}{% if modo == 'manual' %}: a mensagem fica pronta na fila e você envia com um toque{% endif %}</p>
+    <div class="linha-botoes" style="margin-top:14px">
+      {% if modo == 'manual' %}<a class="btn sm primario" href="{{ url_for('fila') }}">{{ icone('fila', 14) }} Fila de envio{% if fila_total %} ({{ fila_total }}){% endif %}</a>{% endif %}
+      <a class="btn sm" href="{{ url_for('configuracoes') }}#{{ 'envio' if canal == 'email' else 'whatsapp' }}">{{ icone('settings', 14) }} Configurar</a>
     </div>
-    <h2>WhatsApp</h2>
-    <p class="sub">{{ ('Provedor: ' ~ cfg.whatsapp) if cfg.whatsapp else 'Nenhum provedor configurado' }}</p>
-    <div class="linha-botoes" style="margin-top:14px"><a class="btn sm" href="{{ url_for('configuracoes') }}#whatsapp">{{ icone('settings', 14) }} Configurar</a></div>
   </div>
+  {% endfor %}
   <div class="modulo">
     <div class="topo-kpi"><span class="ico g-laranja">{{ icone('clock', 20) }}</span><span class="pill azul">todo dia {{ cfg.hora }}h</span></div>
     <h2>Regras de envio</h2>
@@ -42,24 +42,31 @@
   </div>
 </div>
 
-{% if not cfg.email or not cfg.whatsapp %}
-<div class="info" style="margin-top:14px">{{ icone('alert', 16) }}<div>No modo <strong>simulado</strong> as mensagens são só registradas aqui, sem envio real. Assim dá para testar tudo antes de conectar o e-mail e o WhatsApp.</div></div>
-{% endif %}
-
-<div class="secao"><div><h2>Histórico de avisos</h2><p class="sub">últimos 200 envios</p></div><span class="contador">{{ avisos|length }} registro(s)</span></div>
+<div class="secao"><div><h2>Histórico de avisos</h2><p class="sub">últimos 200 registros</p></div><span class="contador">{{ avisos|length }} registro(s)</span></div>
+<form class="filtros-avisos" method="get">
+  <label class="busca">{{ icone('search', 16) }}<input type="search" name="q" value="{{ filtros.q }}" placeholder="Nome do aluno" aria-label="Buscar avisos pelo nome do aluno"></label>
+  <label class="campo"><span class="sr-only">Canal</span><select name="canal" aria-label="Canal">
+    <option value="">Todos os canais</option><option value="whatsapp" {{ 'selected' if filtros.canal == 'whatsapp' }}>WhatsApp</option><option value="email" {{ 'selected' if filtros.canal == 'email' }}>E-mail</option></select></label>
+  <label class="campo"><span class="sr-only">Situação</span><select name="status" aria-label="Situação">
+    <option value="">Todas as situações</option>{% for k, v in status_aviso.items() %}<option value="{{ k }}" {{ 'selected' if filtros.status == k }}>{{ v }}</option>{% endfor %}</select></label>
+  <label class="campo"><span class="sr-only">Tipo</span><select name="tipo" aria-label="Tipo de aviso">
+    <option value="">Todos os tipos</option>{% for k, v in tipos.items() %}<option value="{{ k }}" {{ 'selected' if filtros.tipo == k }}>{{ v }}</option>{% endfor %}</select></label>
+  <button class="btn">{{ icone('filtro', 15) }} Filtrar</button>
+  {% if filtros.values()|select|list %}<a class="btn fantasma" href="{{ url_for('avisos') }}">Limpar</a>{% endif %}
+</form>
 <ul class="lista-cel so-celular">
   {% for n in avisos %}
   <li><div class="item-cel">
     <span class="icone-cel" aria-hidden="true">{{ icone('mail' if n.canal == 'email' else 'whatsapp', 18) }}</span>
     <span class="corpo">
       {% if n.aluno_id %}<a href="{{ url_for('aluno_detalhe', aluno_id=n.aluno_id) }}"><strong>{{ n.nome }}</strong></a>{% else %}<strong>-</strong>{% endif %}
-      <small>{{ 'E-mail' if n.canal == 'email' else 'WhatsApp' }} · {{ n.tipo }} · {{ n.criado_em[8:10] }}/{{ n.criado_em[5:7] }} {{ n.criado_em[11:16] }}</small>
+      <small>{{ 'E-mail' if n.canal == 'email' else 'WhatsApp' }} · {{ tipos.get(n.tipo, n.tipo) }} · {{ n.criado_em[8:10] }}/{{ n.criado_em[5:7] }} {{ n.criado_em[11:16] }}</small>
       {% if n.erro %}<small class="erro-cel">{{ n.erro }}</small>{% endif %}
     </span>
-    <span class="fim"><span class="pill {{ n.status }}">{{ n.status }}</span></span>
+    <span class="fim"><span class="pill {{ n.status }}">{{ status_aviso.get(n.status, n.status) }}</span></span>
   </div></li>
   {% else %}
-  <li class="vazio">Nenhum aviso enviado ainda.</li>
+  <li class="vazio">Nenhum aviso encontrado.</li>
   {% endfor %}
 </ul>
 <div class="card so-desktop" style="padding:8px 18px">
@@ -73,11 +80,11 @@
         <td>{% if n.aluno_id %}<a href="{{ url_for('aluno_detalhe', aluno_id=n.aluno_id) }}"><strong>{{ n.nome }}</strong></a>{% else %}-{% endif %}</td>
         <td><span class="chip">{{ icone('mail' if n.canal == 'email' else 'whatsapp', 12) }} {{ 'E-mail' if n.canal == 'email' else 'WhatsApp' }}</span></td>
         <td style="color:var(--suave)">{{ n.destino }}</td>
-        <td>{{ n.tipo }}</td>
-        <td><span class="pill {{ n.status }}">{{ n.status }}</span>{% if n.erro %}<div style="font-size:11.5px;color:var(--vermelho);max-width:300px;margin-top:3px">{{ n.erro }}</div>{% endif %}</td>
+        <td>{{ tipos.get(n.tipo, n.tipo) }}</td>
+        <td><span class="pill {{ n.status }}">{{ status_aviso.get(n.status, n.status) }}</span>{% if n.erro %}<div style="font-size:11.5px;color:var(--vermelho);max-width:300px;margin-top:3px">{{ n.erro }}</div>{% endif %}</td>
       </tr>
     {% else %}
-      <tr><td colspan="6" class="vazio">Nenhum aviso enviado ainda.</td></tr>
+      <tr><td colspan="6" class="vazio">Nenhum aviso encontrado.</td></tr>
     {% endfor %}
     </tbody>
   </table>

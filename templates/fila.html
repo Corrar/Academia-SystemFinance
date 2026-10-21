@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}Fila de envio{% endblock %}
+{% block conteudo %}
+<div class="cabeca">
+  <div>
+    <h1>Fila de envio</h1>
+    <p class="sub"><b data-contador-fila>{{ itens|length }}</b> aviso(s) com a mensagem pronta para você enviar pelo seu WhatsApp ou e-mail.</p>
+  </div>
+  <a class="btn" href="{{ url_for('configuracoes') }}#envio">{{ icone('raio', 15) }} Ativar envio automático</a>
+</div>
+
+<div class="passos-fila">
+  <div class="passo"><span class="passo-num">1</span><div><strong>Toque em “Abrir no WhatsApp”</strong><p class="sub">a conversa do aluno abre com a mensagem já escrita</p></div></div>
+  <div class="passo"><span class="passo-num">2</span><div><strong>Envie no WhatsApp</strong><p class="sub">confira e toque no botão de enviar</p></div></div>
+  <div class="passo"><span class="passo-num">3</span><div><strong>Volte para cá</strong><p class="sub">o aviso já aparece como enviado; siga para o próximo</p></div></div>
+</div>
+
+<div class="cards fila-cards">
+  {% for n in itens %}
+  <article class="card item-fila" data-item-fila>
+    <div class="item-fila-topo">
+      <span class="avatar" aria-hidden="true">{{ (n.nome or '?')[:1] }}</span>
+      <div class="item-fila-quem">
+        {% if n.aluno_id %}<a href="{{ url_for('aluno_detalhe', aluno_id=n.aluno_id) }}"><strong>{{ n.nome }}</strong></a>{% else %}<strong>{{ n.nome or '-' }}</strong>{% endif %}
+        <small data-estado>{{ 'WhatsApp' if n.canal == 'whatsapp' else 'E-mail' }} · {{ ('+' ~ n.destino) if n.canal == 'whatsapp' else n.destino }}</small>
+      </div>
+      <span class="pill {{ 'amarelo' if n.tipo == 'reajuste' else ('verde' if n.tipo == 'comprovante' else ('vermelho' if n.tipo == 'atraso' else 'azul')) }}">{{ tipos.get(n.tipo, n.tipo) }}</span>
+    </div>
+    <details class="item-fila-msg">
+      <summary>Ver mensagem</summary>
+      <p class="msg-preview" tabindex="0">{% if n.assunto and n.canal == 'email' %}<b>{{ n.assunto }}</b>
+{% endif %}{{ n.mensagem }}</p>
+    </details>
+    <div class="item-fila-acoes">
+      <a class="btn primario {{ 'whats-cheio' if n.canal == 'whatsapp' }}" href="{{ link_envio(n) }}" target="_blank" rel="noopener"
+         data-enviar-fila="{{ url_for('fila_marcar', notificacao_id=n.id) }}" data-csrf="{{ csrf_token }}">
+        {{ icone('whatsapp' if n.canal == 'whatsapp' else 'mail', 16) }} {{ 'Abrir no WhatsApp' if n.canal == 'whatsapp' else 'Abrir e-mail' }}</a>
+      <form method="post" action="{{ url_for('fila_marcar', notificacao_id=n.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <button class="btn fantasma sm" title="Marcar como enviado sem abrir">{{ icone('check', 14) }} Já enviei</button>
+      </form>
+      <form method="post" action="{{ url_for('fila_marcar', notificacao_id=n.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="descartar" value="1">
+        <button class="btn fantasma sm" aria-label="Descartar aviso de {{ n.nome }}">{{ icone('x', 14) }} Descartar</button>
+      </form>
+    </div>
+  </article>
+  {% else %}
+  <div class="vazio">{{ icone('enviado', 28) }}<br><strong>Tudo enviado!</strong><br>
+    Quando a cobrança automática rodar (todo dia às 9h) ou você avisar um aluno, as mensagens aparecem aqui.</div>
+  {% endfor %}
+</div>
+{% endblock %}

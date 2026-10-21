@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block titulo %}Cadastro rápido{% endblock %}
+{% block conteudo %}
+<a class="voltar" href="{{ url_for('alunos') }}">{{ icone('arrow-left', 14) }} Inscritos</a>
+<div class="cabeca">
+  <div>
+    <h1>Cadastro rápido</h1>
+    <p class="sub">Passe para o sistema os alunos que já têm a <b>ficha em papel</b>: digite várias de uma vez, cole do Excel ou importe a planilha.</p>
+  </div>
+</div>
+
+<nav class="filtros abas-lote" aria-label="Forma de cadastro">
+  {% for chave, ic, rotulo in [('digitar', 'prancheta', 'Digitar fichas'), ('colar', 'copiar', 'Colar do Excel'), ('arquivo', 'upload', 'Importar planilha')] %}
+    <a class="filtro {{ 'ativo' if aba == chave }}" {{ 'aria-current="page"'|safe if aba == chave }} href="{{ url_for('alunos_lote', aba=chave) }}">{{ icone(ic, 15) }} {{ rotulo }}</a>
+  {% endfor %}
+</nav>
+
+{% if aba == 'colar' %}
+<form method="post" class="card" style="margin-top:16px">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="acao" value="colar">
+  <div class="card-titulo"><span class="ico p g-verde">{{ icone('copiar', 17) }}</span>
+    <div><h2>Cole as linhas da planilha</h2><p class="sub">no Excel ou Google Planilhas, selecione as linhas, copie (Ctrl+C) e cole aqui (Ctrl+V)</p></div></div>
+  <label class="campo"><span class="sr-only">Linhas copiadas da planilha</span>
+    <textarea name="texto" rows="9" required placeholder="Nome&#9;WhatsApp&#9;E-mail&#9;Plano&#9;Vencimento&#10;Maria Souza&#9;(11) 98888-7777&#9;maria@email.com&#9;Mensal&#9;10/12/2026"></textarea>
+  </label>
+  <div class="form-grid" style="margin-top:14px">
+    <label class="campo"><span class="rotulo-campo">Plano para quem não tiver plano na planilha</span>
+      <select name="plano_padrao">{% for p in planos %}<option value="{{ p.id }}" {{ 'selected' if opcoes.plano_padrao == p.id|string }}>{{ p.nome }} – {{ p.valor|moeda }}</option>{% endfor %}</select>
+    </label>
+  </div>
+  <div class="info" style="margin-top:14px">{{ icone('info', 16) }}<div>
+    Se a primeira linha tiver os títulos (Nome, WhatsApp, E-mail, CPF, Plano, Vencimento, Inscrição), as colunas podem estar em qualquer ordem.
+    Sem títulos, a ordem é: <strong>nome, WhatsApp, e-mail, plano, vencimento</strong>. Datas como 10/12/2026.
+  </div></div>
+  <div class="linha-botoes"><button class="btn primario">{{ icone('lista', 15) }} Ler e revisar</button></div>
+</form>
+
+{% elif aba == 'arquivo' %}
+<form method="post" enctype="multipart/form-data" class="card" style="margin-top:16px">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="acao" value="arquivo">
+  <div class="card-titulo"><span class="ico p g-azul">{{ icone('planilha', 17) }}</span>
+    <div><h2>Importar planilha</h2><p class="sub">arquivo do Excel (.xlsx) ou .csv, até 500 alunos por vez</p></div></div>
+  <label class="arquivo-zona">
+    {{ icone('upload', 28) }}
+    <strong>Escolha o arquivo</strong>
+    <span class="sub">.xlsx ou .csv · a primeira aba da planilha</span>
+    <input type="file" name="arquivo" accept=".xlsx,.csv,text/csv" required>
+  </label>
+  <div class="form-grid" style="margin-top:14px">
+    <label class="campo"><span class="rotulo-campo">Plano para quem não tiver plano na planilha</span>
+      <select name="plano_padrao">{% for p in planos %}<option value="{{ p.id }}" {{ 'selected' if opcoes.plano_padrao == p.id|string }}>{{ p.nome }} – {{ p.valor|moeda }}</option>{% endfor %}</select>
+    </label>
+  </div>
+  <div class="linha-botoes">
+    <button class="btn primario">{{ icone('upload', 15) }} Ler e revisar</button>
+    <a class="btn" href="{{ url_for('alunos_lote_modelo') }}" download>{{ icone('planilha', 15) }} Baixar planilha modelo</a>
+  </div>
+</form>
+
+{% else %}
+{% if lidas %}
+<div class="info" style="margin-top:16px" role="status">{{ icone('lista', 16) }}<div>
+  Lemos <strong>{{ lidas }} ficha(s)</strong>. Confira os dados abaixo
+  {%- if total_erros %} e corrija as marcadas em vermelho{% endif %} antes de salvar. Nada foi gravado ainda.
+</div></div>
+{% endif %}
+
+<form method="post" class="lote" id="lote" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-titulo"><span class="ico p g-violeta">{{ icone('settings', 17) }}</span>
+      <div><h2>Vale para todas as fichas</h2><p class="sub">conforme o que o aluno marcou e assinou no papel</p></div></div>
+    <div class="form-grid">
+      <label class="campo"><span class="rotulo-campo">Plano padrão <span class="ajuda">· quando a ficha não tiver</span></span>
+        <select name="plano_padrao">{% for p in planos %}<option value="{{ p.id }}" {{ 'selected' if opcoes.plano_padrao == p.id|string }}>{{ p.nome }} – {{ p.valor|moeda }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <div class="opcoes-lote">
+      <label class="check"><input type="checkbox" name="aceita_whatsapp" value="1" {{ 'checked' if opcoes.aceita_whatsapp }}> Autorizaram avisos por WhatsApp</label>
+      <label class="check"><input type="checkbox" name="aceita_email" value="1" {{ 'checked' if opcoes.aceita_email }}> Autorizaram avisos por e-mail</label>
+      <label class="check"><input type="checkbox" name="termos" value="1" {{ 'checked' if opcoes.termos }}> Assinaram os termos na ficha em papel</label>
+    </div>
+    <p class="ajuda" style="margin:10px 0 0">Guarde as fichas assinadas: elas são a prova da autorização (LGPD). Quem não autorizou pode ser ajustado depois, na ficha de cada aluno.</p>
+  </section>
+
+  <section class="card fichas-card">
+    <div class="card-titulo"><span class="ico p g-azul">{{ icone('prancheta', 17) }}</span>
+      <div><h2>Fichas</h2><p class="sub">só nome e vencimento são obrigatórios · Enter pula para o próximo campo</p></div></div>
+    <div class="fichas">
+      <div class="ficha ficha-cabeca" aria-hidden="true">
+        <span>#</span><span>Nome *</span><span>WhatsApp</span><span>E-mail</span><span>Plano</span><span>Vence em *</span><span>Inscrição</span><span>CPF</span>
+      </div>
+      {% for l in linhas %}
+      {% set i = loop.index0 %}{% set erro = erros.get(i) %}
+      <fieldset class="ficha {{ 'com-erro' if erro }}" {% if erro %}aria-describedby="erro-{{ i }}"{% endif %}>
+        <legend class="sr-only">Ficha {{ loop.index }}</legend>
+        <span class="ficha-num" aria-hidden="true"><span class="so-celular">Ficha </span>{{ loop.index }}</span>
+        <label class="campo"><span class="rotulo-campo">Nome *</span><input name="nome" value="{{ l.nome or '' }}" autocomplete="off" {{ 'aria-invalid="true"'|safe if erro }}></label>
+        <label class="campo"><span class="rotulo-campo">WhatsApp</span><input name="telefone" value="{{ l.telefone or '' }}" inputmode="tel" placeholder="(11) 99999-0000" autocomplete="off" data-telefone></label>
+        <label class="campo"><span class="rotulo-campo">E-mail</span><input name="email" type="email" value="{{ l.email or '' }}" autocomplete="off"></label>
+        <label class="campo"><span class="rotulo-campo">Plano</span>
+          <select name="plano_id">
+            <option value="">Padrão</option>
+            {% for p in planos %}<option value="{{ p.id }}" {{ 'selected' if (l.plano_id or '')|string == p.id|string }}>{{ p.nome }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="campo"><span class="rotulo-campo">Vence em *</span><input name="data_vencimento" type="date" value="{{ l.data_vencimento or '' }}"></label>
+        <label class="campo"><span class="rotulo-campo">Inscrição</span><input name="data_inscricao" type="date" value="{{ l.data_inscricao or '' }}"></label>
+        <label class="campo"><span class="rotulo-campo">CPF</span><input name="cpf" value="{{ l.cpf or '' }}" inputmode="numeric" autocomplete="off"></label>
+        {% if erro %}<p class="ficha-erro" id="erro-{{ i }}">{{ icone('alert', 14) }} Ficha {{ loop.index }}: {{ erro|join('; ') }}{% if l.venc_lido and not l.data_vencimento %} (lido: “{{ l.venc_lido }}”){% endif %}.</p>{% endif %}
+      </fieldset>
+      {% endfor %}
+    </div>
+    <div class="linha-botoes">
+      <button class="btn" name="acao" value="mais" formnovalidate>{{ icone('linha-mais', 15) }} Mais 5 fichas</button>
+    </div>
+  </section>
+
+  <div class="barra-salvar">
+    <p class="sub" data-resumo-lote>{{ linhas|selectattr('nome')|list|length }} ficha(s) preenchida(s)</p>
+    <button class="btn primario" name="acao" value="salvar">{{ icone('salvar', 15) }} Salvar fichas</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

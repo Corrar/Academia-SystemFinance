@@ -9,7 +9,9 @@
   <meta name="apple-mobile-web-app-title" content="{{ academia_curto }}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-  <script>try { var t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.tema = t; } catch (e) {}</script>
+  <script>try { var t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.tema = t;
+    var l = localStorage.getItem("lateral");
+    if (l || (innerWidth > 760 && innerWidth <= 1100)) document.documentElement.dataset.lateral = l || "recolhida"; } catch (e) {}</script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="{{ url_for('static', filename='tema.js') }}" defer></script>
   <script src="{{ url_for('static', filename='interface.js') }}" defer></script>

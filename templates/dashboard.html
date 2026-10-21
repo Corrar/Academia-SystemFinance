@@ -8,6 +8,27 @@
   <p class="sub">Hoje é {{ hoje.isoformat()|data_br }} · próxima cobrança automática em <b>{{ proxima_cobranca.strftime('%d/%m às %H:%M') }}</b></p>
 </div>
 
+{% if fila_total or reajustes %}
+<div class="avisos-topo">
+  {% if fila_total %}
+  <a class="aviso-topo" href="{{ url_for('fila') }}">
+    <span class="ico p g-verde">{{ icone('fila', 17) }}</span>
+    <span class="aviso-topo-texto"><strong>{{ fila_total }} aviso{{ 's' if fila_total != 1 }} pronto{{ 's' if fila_total != 1 }} para enviar</strong>
+      <small>As mensagens já estão escritas: envie pelo seu WhatsApp ou e-mail com um toque.</small></span>
+    {{ icone('chevron-right', 18) }}
+  </a>
+  {% endif %}
+  {% for r in reajustes %}
+  <a class="aviso-topo" href="{{ url_for('reajustes') }}">
+    <span class="ico p g-laranja">{{ icone('reajuste', 17) }}</span>
+    <span class="aviso-topo-texto"><strong>Reajuste do plano {{ r.plano_nome }} em {{ r.vigencia|data_br }}</strong>
+      <small>{{ r.valor_anterior|moeda }} → {{ r.valor_novo|moeda }} · {{ r.avisados }} aluno(s) avisado(s)</small></span>
+    {{ icone('chevron-right', 18) }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
 <nav class="acoes-contato so-celular" aria-label="Ações rápidas">
   <a class="acao-contato principal" href="{{ url_for('aluno_novo') }}">{{ icone('user-plus', 22) }}Novo aluno</a>
   <a class="acao-contato" href="{{ url_for('validade') }}">{{ icone('search', 22) }}Consultar</a>

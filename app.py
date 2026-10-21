@@ -1,4 +1,6 @@
 """Sistema de cobrança de mensalidades para academia (Flask + SQLite)."""
+import csv
+import io
 import json
 import os
 import secrets
@@ -12,6 +14,7 @@ import ajustes
 import cobranca
 import config
 import db
+import importacao
 import notificacoes
 from icones import icone
 from notificacoes import data_br, moeda
@@ -22,6 +25,7 @@ if config.NA_VERCEL:
     # A Vercel fica na frente do app: usa o IP real do visitante e o https original
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config.update(
+    MAX_CONTENT_LENGTH=4 * 1024 * 1024,  # planilhas do cadastro rápido
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=config.COOKIE_SEGURO,
@@ -32,6 +36,7 @@ app.jinja_env.filters["data_br"] = data_br
 app.jinja_env.filters["moeda_inteira"] = lambda v: moeda(round(v or 0))[:-3]
 MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 app.jinja_env.globals["icone"] = icone
+app.jinja_env.globals["link_envio"] = notificacoes.link_envio
 app.jinja_env.filters["mes_curto"] = lambda ym: f"{MESES[int(ym[5:7]) - 1]}/{ym[2:4]}"
 
 STATUS_ROTULO = {
@@ -67,6 +72,9 @@ def contexto_global():
         "DIAS_AVISO": config.DIAS_AVISO,
         "csrf_token": session.get("csrf"),
         "hoje": db.hoje(),
+        # contadores da sidebar e do menu (só no painel)
+        "fila_total": db.contar_fila() if session.get("logado") else 0,
+        "envio_modos": _modos_envio() if session.get("logado") else {},
     }
 
 
@@ -163,21 +171,77 @@ def dashboard():
         maior=maior,
         proximos=db.proximos_vencimentos(7),
         proxima_cobranca=cobranca.proxima_execucao(),
+        reajustes=db.reajustes_agendados(),
     )
 
 
 # ---------------------------------------------------------------- alunos
 
+ORDENS_ROTULO = {"nome": "Nome (A–Z)", "vencimento": "Vencimento mais próximo", "vencimento_desc": "Vencimento mais distante",
+                 "recentes": "Inscritos mais recentes"}
+CONTATOS_ROTULO = {"whatsapp": "Recebe por WhatsApp", "email": "Recebe por e-mail", "sem_contato": "Sem telefone e e-mail",
+                   "sem_autorizacao": "Não autorizou avisos"}
+
+
+def _filtros_alunos() -> dict:
+    a = request.args
+    plano = a.get("plano", "")
+    return {
+        "termo": a.get("q", "").strip(),
+        "plano_id": int(plano) if plano.isdigit() else None,
+        "contato": a.get("contato", "") if a.get("contato") in CONTATOS_ROTULO else "",
+        "venc_de": importacao.ler_data(a.get("de", "")),
+        "venc_ate": importacao.ler_data(a.get("ate", "")),
+        "ordem": a.get("ordem", "nome") if a.get("ordem") in ORDENS_ROTULO else "nome",
+    }
+
+
 @app.route("/alunos")
 @login_obrigatorio
 def alunos():
-    termo = request.args.get("q", "").strip()
-    status = request.args.get("status", "")
-    todos = db.buscar_alunos(termo)
+    f = _filtros_alunos()
+    status = request.args.get("status", "") if request.args.get("status") in STATUS_ROTULO else ""
+    todos = db.buscar_alunos(f["termo"], plano_id=f["plano_id"], contato=f["contato"], venc_de=f["venc_de"],
+                             venc_ate=f["venc_ate"], ordem=f["ordem"])
     contagem = {k: sum(1 for a in todos if a["status"] == k) for k in STATUS_ROTULO}
     lista = [a for a in todos if a["status"] == status] if status else todos
-    return render_template("alunos.html", alunos=lista, termo=termo, status=status,
-                           contagem=contagem, total=len(todos))
+    planos = db.listar_planos()
+    # filtros ativos viram "chips" removíveis (link sem aquele filtro)
+    args = {k: v for k, v in request.args.items() if v}
+    nomes_plano = {p["id"]: p["nome"] for p in planos}
+    chips = []
+    for chave, rotulo in (("plano", nomes_plano.get(f["plano_id"])), ("contato", CONTATOS_ROTULO.get(f["contato"])),
+                          ("de", f["venc_de"] and "Vence a partir de " + data_br(f["venc_de"])),
+                          ("ate", f["venc_ate"] and "Vence até " + data_br(f["venc_ate"])),
+                          ("ordem", f["ordem"] != "nome" and ORDENS_ROTULO[f["ordem"]])):
+        if rotulo:
+            chips.append((rotulo, url_for("alunos", **{k: v for k, v in args.items() if k != chave})))
+    return render_template("alunos.html", alunos=lista, termo=f["termo"], status=status, f=f, chips=chips,
+                           contagem=contagem, total=len(todos), planos=planos, ordens=ORDENS_ROTULO,
+                           contatos=CONTATOS_ROTULO, args=args,
+                           total_geral=len(db.buscar_alunos()) if (chips or f["termo"]) else len(todos))
+
+
+@app.route("/alunos/exportar.csv")
+@login_obrigatorio
+def alunos_exportar():
+    """A lista filtrada em planilha (abre no Excel). Contém dados pessoais: só para uso interno."""
+    f = _filtros_alunos()
+    status = request.args.get("status", "")
+    lista = db.buscar_alunos(f["termo"], status if status in STATUS_ROTULO else "", plano_id=f["plano_id"],
+                             contato=f["contato"], venc_de=f["venc_de"], venc_ate=f["venc_ate"], ordem=f["ordem"])
+    saida = io.StringIO()
+    escritor = csv.writer(saida, delimiter=";", lineterminator="\r\n")
+    escritor.writerow(["Nome", "WhatsApp", "E-mail", "CPF", "Plano", "Valor", "Vencimento", "Situação",
+                       "Inscrição", "Aceita WhatsApp", "Aceita e-mail"])
+    for a in lista:
+        escritor.writerow([a["nome"], a["telefone"] or "", a["email"] or "", a["cpf"] or "", a["plano_nome"] or "",
+                           moeda(a["plano_valor"]) if a["plano_valor"] else "", data_br(a["data_vencimento"]),
+                           STATUS_ROTULO[a["status"]], data_br(a["data_inscricao"]),
+                           "sim" if a["aceita_whatsapp"] else "não", "sim" if a["aceita_email"] else "não"])
+    nome = f"inscritos-{db.hoje().isoformat()}.csv"
+    return Response("\ufeff" + saida.getvalue(), mimetype="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f"attachment; filename={nome}"})
 
 
 def _form_aluno() -> dict:
@@ -228,12 +292,117 @@ def aluno_novo():
             flash("Já existe um aluno com este CPF.", "erro")
             return render_template("aluno_form.html", aluno=dados, planos=planos, novo=True, formas=FORMAS_PAGAMENTO)
         flash(f"Aluno {dados['nome']} cadastrado!", "ok")
+        if request.form.get("proximo"):
+            # mantém plano e autorizações para agilizar a próxima ficha
+            return redirect(url_for("aluno_novo", plano=dados["plano_id"] or "",
+                                    email=dados["aceita_email"], whatsapp=dados["aceita_whatsapp"]))
         return redirect(url_for("aluno_detalhe", aluno_id=aluno_id))
 
-    padrao = {"aceita_email": 1, "aceita_whatsapp": 1, "data_inscricao": db.hoje().isoformat(),
+    plano_pedido = request.args.get("plano", "")
+    padrao = {"aceita_email": request.args.get("email", "1") == "1", "aceita_whatsapp": request.args.get("whatsapp", "1") == "1",
+              "data_inscricao": db.hoje().isoformat(),
               "data_vencimento": (db.hoje() + timedelta(days=30)).isoformat(),
-              "plano_id": planos[0]["id"] if planos else None}
+              "plano_id": int(plano_pedido) if plano_pedido.isdigit() else (planos[0]["id"] if planos else None)}
     return render_template("aluno_form.html", aluno=padrao, planos=planos, novo=True, formas=FORMAS_PAGAMENTO)
+
+
+# ---------------------------------------------------------------- cadastro rápido (fichas em papel)
+
+LINHAS_INICIAIS = 6
+
+
+def _opcoes_padrao(plano_padrao: str = "") -> dict:
+    planos = db.listar_planos(somente_ativos=True)
+    return {"aceita_whatsapp": True, "aceita_email": True, "termos": False,
+            "plano_padrao": plano_padrao or (str(planos[0]["id"]) if planos else "")}
+
+
+def _tela_lote(linhas, erros=None, opcoes=None, aba="digitar", lidas=None):
+    planos = db.listar_planos(somente_ativos=True)
+    linhas = list(linhas) + [{} for _ in range(max(0, LINHAS_INICIAIS - len(linhas)))]
+    opcoes = opcoes or _opcoes_padrao()
+    return render_template("alunos_lote.html", linhas=linhas, erros=erros or {}, opcoes=opcoes, planos=planos,
+                           aba=aba, lidas=lidas, total_erros=sum(len(v) for v in (erros or {}).values()))
+
+
+def _opcoes_lote() -> dict:
+    f = request.form
+    return {"aceita_whatsapp": bool(f.get("aceita_whatsapp")), "aceita_email": bool(f.get("aceita_email")),
+            "termos": bool(f.get("termos")), "plano_padrao": f.get("plano_padrao", "")}
+
+
+@app.route("/alunos/cadastro-rapido", methods=["GET", "POST"])
+@login_obrigatorio
+def alunos_lote():
+    if request.method == "GET":
+        aba = request.args.get("aba", "digitar")
+        return _tela_lote([], aba=aba if aba in ("digitar", "colar", "arquivo") else "digitar")
+    acao = request.form.get("acao", "salvar")
+    planos = db.listar_planos(somente_ativos=True)
+
+    if acao in ("colar", "arquivo"):
+        opcoes = _opcoes_padrao(request.form.get("plano_padrao", ""))
+        if acao == "colar":
+            linhas = importacao.ler_texto(request.form.get("texto", ""), planos)
+        else:
+            arquivo = request.files.get("arquivo")
+            if not arquivo or not arquivo.filename:
+                flash("Escolha um arquivo .csv ou .xlsx.", "erro")
+                return _tela_lote([], aba="arquivo", opcoes=opcoes)
+            if not arquivo.filename.lower().endswith((".csv", ".xlsx", ".txt")):
+                flash("Formato não suportado: use .csv ou .xlsx (no Excel: Arquivo › Salvar como).", "erro")
+                return _tela_lote([], aba="arquivo", opcoes=opcoes)
+            try:
+                linhas = importacao.ler_arquivo(arquivo.filename, arquivo.read(), planos)
+            except Exception:  # noqa: BLE001 - planilha corrompida ou protegida
+                flash("Não foi possível ler esse arquivo. Salve como .csv ou .xlsx e tente de novo.", "erro")
+                return _tela_lote([], aba="arquivo", opcoes=opcoes)
+        linhas = [l for l in linhas if importacao.preenchida(l)]
+        if not linhas:
+            flash("Nenhuma ficha encontrada. Confira se a primeira coluna tem o nome do aluno.", "erro")
+            return _tela_lote([], aba=acao, opcoes=opcoes)
+        for l in linhas:
+            l["plano_id"] = l["plano_id"] or opcoes["plano_padrao"]
+        return _tela_lote(linhas, importacao.validar(linhas), opcoes, lidas=len(linhas))
+
+    opcoes = _opcoes_lote()
+    linhas = importacao.linhas_do_formulario(request.form)
+    if acao == "mais":
+        return _tela_lote(linhas + [{} for _ in range(5)], opcoes=opcoes)
+
+    preenchidas = [l for l in linhas if importacao.preenchida(l)]
+    if not preenchidas:
+        flash("Preencha pelo menos uma ficha.", "erro")
+        return _tela_lote(linhas, opcoes=opcoes)
+    erros = importacao.validar(preenchidas)
+    if erros:
+        flash(f"Revise {len(erros)} ficha(s) marcada(s) em vermelho antes de salvar.", "erro")
+        return _tela_lote(preenchidas, erros, opcoes)
+
+    agora_iso = datetime.now().isoformat(timespec="seconds")
+    nota = f"Cadastro feito a partir da ficha em papel ({db.hoje().strftime('%d/%m/%Y')})."
+    with db.conectar() as con:
+        for l in preenchidas:
+            plano = l["plano_id"] or opcoes["plano_padrao"]
+            con.execute(
+                "INSERT INTO alunos (nome, cpf, email, telefone, plano_id, data_inscricao, data_vencimento, observacoes, "
+                "aceita_email, aceita_whatsapp, termos_aceitos_em) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (l["nome"], l["cpf"] or None, l["email"].lower() or None, l["telefone"] or None,
+                 int(plano) if str(plano).isdigit() else None,
+                 importacao.ler_data(l["data_inscricao"]) or db.hoje().isoformat(),
+                 importacao.ler_data(l["data_vencimento"]), nota,
+                 1 if opcoes["aceita_email"] else 0, 1 if opcoes["aceita_whatsapp"] else 0,
+                 agora_iso if opcoes["termos"] else None),
+            )
+    flash(f"{len(preenchidas)} aluno(s) cadastrado(s) a partir das fichas em papel.", "ok")
+    return redirect(url_for("alunos", ordem="recentes"))
+
+
+@app.route("/alunos/cadastro-rapido/modelo.csv")
+@login_obrigatorio
+def alunos_lote_modelo():
+    return Response(importacao.modelo_csv(), mimetype="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": "attachment; filename=modelo-fichas-alunos.csv"})
 
 
 @app.route("/alunos/<int:aluno_id>/editar", methods=["GET", "POST"])
@@ -294,6 +463,8 @@ def aluno_detalhe(aluno_id):
         pagamentos=db.pagamentos_aluno(aluno_id),
         avisos=db.notificacoes_recentes(20, aluno_id),
         validade_sugerida=_validade_sugerida(aluno),
+        valor_sugerido=notificacoes.valor_cobranca(aluno) or 0,
+        fila=db.fila_envio(aluno_id),
         link_wa=notificacoes.link_whatsapp(aluno),
         preview=notificacoes.montar_mensagem(aluno)[1],
         formas=FORMAS_PAGAMENTO,
@@ -322,7 +493,17 @@ def registrar_pagamento(aluno_id):
             (aluno_id, valor, data_pag, aluno["data_vencimento"], nova_validade, request.form.get("forma")),
         )
         con.execute("UPDATE alunos SET data_vencimento = ?, ativo = 1 WHERE id = ?", (nova_validade, aluno_id))
-    flash(f"Pagamento de {moeda(valor)} registrado. Nova validade: {data_br(nova_validade)}.", "ok")
+    mensagem = f"Pagamento de {moeda(valor)} registrado. Nova validade: {data_br(nova_validade)}."
+    if request.form.get("comprovante"):
+        atualizado = db.obter_aluno(aluno_id)
+        res = notificacoes.notificar(atualizado, tipo="comprovante", chave=f"comprovante:{data_pag}:{nova_validade}",
+                                     mensagem=notificacoes.montar_comprovante(atualizado, valor, data_pag, nova_validade,
+                                                                              request.form.get("forma")))
+        if "pendente" in res.values():
+            mensagem += " O comprovante está pronto para você enviar (veja logo abaixo)."
+        elif any(v == "enviado" for v in res.values()):
+            mensagem += " Comprovante enviado ao aluno."
+    flash(mensagem, "ok")
     return redirect(request.form.get("voltar") or url_for("aluno_detalhe", aluno_id=aluno_id))
 
 
@@ -407,6 +588,7 @@ def reembolso():
 # ---------------------------------------------------------------- avisos
 
 ROTULO_RESULTADO = {"enviado": "enviado", "simulado": "registrado (modo simulado)",
+                    "pendente": "pronto na fila para você enviar",
                     "não autorizado": "aluno pediu para não receber",
                     "erro": "ERRO", "sem contato": "sem contato cadastrado", "já enviado": "já enviado"}
 
@@ -433,28 +615,64 @@ def avisar_inadimplentes():
     enviados = erros = 0
     for aluno in db.inadimplentes():
         res = notificacoes.notificar(aluno, tipo="manual")
-        enviados += any(s in ("enviado", "simulado") for s in res.values())
+        enviados += any(s in notificacoes.ENTREGUES for s in res.values())
         erros += "erro" in res.values()
     flash(f"Avisos disparados para {enviados} inadimplente(s)" + (f" · {erros} com erro" if erros else "") + ".",
           "erro" if erros else "ok")
     return redirect(url_for("dashboard"))
 
 
+TIPOS_AVISO = {"lembrete": "Lembrete", "vencimento": "Vencimento", "atraso": "Atraso", "manual": "Manual",
+               "reajuste": "Reajuste", "comprovante": "Comprovante"}
+STATUS_AVISO = {"enviado": "Enviado", "pendente": "Na fila", "erro": "Erro", "simulado": "Simulado",
+                "descartado": "Descartado"}
+
+
+def _modos_envio() -> dict:
+    email, wa = ajustes.provedor_email(), ajustes.whatsapp()["provedor"]
+    return {
+        "email": email, "whatsapp": wa,
+        "email_nome": NOMES_EMAIL[email] + (f" · {ajustes.smtp()['host']}" if email == "smtp" else ""),
+        "whatsapp_nome": NOMES_WHATSAPP[wa],
+        "automatico": email in ("smtp", "resend") and wa not in ("manual", "simulado"),
+    }
+
+
 @app.route("/avisos")
 @login_obrigatorio
 def avisos():
+    a = request.args
+    filtros = {"canal": a.get("canal", "") if a.get("canal") in ("email", "whatsapp") else "",
+               "status": a.get("status", "") if a.get("status") in STATUS_AVISO else "",
+               "tipo": a.get("tipo", "") if a.get("tipo") in TIPOS_AVISO else "",
+               "q": a.get("q", "").strip()}
     return render_template(
         "avisos.html",
-        avisos=db.notificacoes_recentes(200),
-        cfg={
-            "email": "{host}:{porta}".format(**ajustes.smtp()) if ajustes.smtp()["host"] else None,
-            "whatsapp": NOMES_WHATSAPP[ajustes.whatsapp()["provedor"]] if ajustes.whatsapp()["provedor"] != "simulado" else None,
-            "dias": config.DIAS_AVISO,
-            "hora": config.HORA_COBRANCA,
-        },
+        avisos=db.notificacoes_recentes(200, canal=filtros["canal"], status=filtros["status"], tipo=filtros["tipo"],
+                                        termo=filtros["q"]),
+        filtros=filtros, tipos=TIPOS_AVISO, status_aviso=STATUS_AVISO, modos=_modos_envio(),
+        cfg={"dias": config.DIAS_AVISO, "hora": config.HORA_COBRANCA},
         ultima=db.get_sistema("ultima_cobranca"),
         proxima=cobranca.proxima_execucao(),
     )
+
+
+@app.route("/avisos/fila")
+@login_obrigatorio
+def fila():
+    itens = db.fila_envio()
+    return render_template("fila.html", itens=itens, tipos=TIPOS_AVISO, modos=_modos_envio())
+
+
+@app.post("/avisos/<int:notificacao_id>/marcar")
+@login_obrigatorio
+def fila_marcar(notificacao_id):
+    status = "descartado" if request.form.get("descartar") else "enviado"
+    db.marcar_notificacao(notificacao_id, status) or abort(404)
+    if request.headers.get("X-Requested-With") == "fetch":  # toque em "Abrir WhatsApp" na fila
+        return jsonify({"ok": True, "restantes": db.contar_fila()})
+    flash("Aviso descartado." if status == "descartado" else "Aviso marcado como enviado.", "ok")
+    return redirect(request.form.get("voltar") or url_for("fila"))
 
 
 @app.route("/api/cron/cobranca")
@@ -539,6 +757,115 @@ def planos():
     return render_template("planos.html", planos=db.listar_planos(), contagem=contagem)
 
 
+# ---------------------------------------------------------------- reajuste da mensalidade
+
+ANTECEDENCIA_RECOMENDADA = 30  # dias de aviso antes do novo valor valer
+
+
+def _alunos_do_plano(plano_id: int) -> list[dict]:
+    return [a for a in db.buscar_alunos(plano_id=plano_id) if a["ativo"]]
+
+
+@app.route("/reajustes", methods=["GET", "POST"])
+@login_obrigatorio
+def reajustes():
+    planos = db.listar_planos(somente_ativos=True)
+    if request.method == "POST":
+        f = request.form
+        vigencia = importacao.ler_data(f.get("vigencia", ""))
+        canais = tuple(c for c in ("email", "whatsapp") if f.get("canal_" + c))
+        if not vigencia or vigencia <= db.hoje().isoformat():
+            flash("Escolha uma data de vigência a partir de amanhã.", "erro")
+            return redirect(url_for("reajustes"))
+        if not canais:
+            flash("Escolha pelo menos um canal (e-mail ou WhatsApp) para avisar.", "erro")
+            return redirect(url_for("reajustes"))
+        agendados = {r["plano_id"] for r in db.reajustes_agendados()}
+        escolhidos = []
+        for p in planos:
+            if not f.get(f"plano_{p['id']}"):
+                continue
+            try:
+                novo = _valor(f.get(f"valor_{p['id']}", ""))
+            except ValueError:
+                novo = 0
+            if novo <= 0:
+                flash(f"Informe o novo valor do plano {p['nome']}.", "erro")
+                return redirect(url_for("reajustes"))
+            if p["id"] in agendados:
+                flash(f"O plano {p['nome']} já tem um reajuste agendado. Cancele o anterior antes de criar outro.", "erro")
+                return redirect(url_for("reajustes"))
+            escolhidos.append((p, round(novo, 2)))
+        if not escolhidos:
+            flash("Marque pelo menos um plano e informe o novo valor.", "erro")
+            return redirect(url_for("reajustes"))
+
+        observacao = f.get("observacao", "").strip()[:500] or None
+        total = na_fila = sem_contato = 0
+        for p, novo in escolhidos:
+            with db.conectar() as con:
+                reajuste_id = con.execute(
+                    "INSERT INTO reajustes (plano_id, valor_anterior, valor_novo, vigencia, observacao) "
+                    "VALUES (?,?,?,?,?) RETURNING id", (p["id"], p["valor"], novo, vigencia, observacao),
+                ).fetchone()[0]
+            reajuste = {"id": reajuste_id, "plano_nome": p["nome"], "valor_anterior": p["valor"],
+                        "valor_novo": novo, "vigencia": vigencia, "observacao": observacao}
+            avisados = 0
+            for aluno in _alunos_do_plano(p["id"]):
+                res = notificacoes.notificar(aluno, canais=canais, chave=f"reajuste:{reajuste_id}", tipo="reajuste",
+                                             mensagem=notificacoes.montar_reajuste(aluno, reajuste))
+                if any(v in notificacoes.ENTREGUES for v in res.values()):
+                    avisados += 1
+                    na_fila += "pendente" in res.values()
+                else:
+                    sem_contato += 1
+            with db.conectar() as con:
+                con.execute("UPDATE reajustes SET avisados = ? WHERE id = ?", (avisados, reajuste_id))
+            total += avisados
+        texto = f"Reajuste agendado para {data_br(vigencia)}. {total} aluno(s) avisado(s)"
+        if na_fila:
+            texto += f", {na_fila} com a mensagem pronta na fila de envio"
+        if sem_contato:
+            texto += f". {sem_contato} sem contato ou sem autorização para avisos"
+        flash(texto + ".", "ok")
+        return redirect(url_for("fila") if na_fila else url_for("reajustes"))
+
+    with db.conectar() as con:
+        contagem = dict(con.execute(
+            "SELECT plano_id, COUNT(*) FROM alunos WHERE ativo = 1 GROUP BY plano_id").fetchall())
+    sugestao = (db.hoje() + timedelta(days=ANTECEDENCIA_RECOMENDADA + 1)).replace(day=1)
+    if (sugestao - db.hoje()).days < ANTECEDENCIA_RECOMENDADA:
+        sugestao = (sugestao + timedelta(days=32)).replace(day=1)
+    exemplo = {**_aluno_exemplo(), "plano_nome": planos[0]["nome"] if planos else "Mensal"}
+    previa = notificacoes.montar_reajuste(exemplo, {
+        "plano_nome": exemplo["plano_nome"], "valor_anterior": planos[0]["valor"] if planos else 120,
+        "valor_novo": round((planos[0]["valor"] if planos else 120) * 1.1, 2), "vigencia": sugestao.isoformat(),
+        "observacao": None})[1]
+    return render_template("reajustes.html", planos=planos, contagem=contagem, historico=db.listar_reajustes(),
+                           agendados={r["plano_id"] for r in db.reajustes_agendados()},
+                           vigencia_sugerida=sugestao.isoformat(), minimo=(db.hoje() + timedelta(days=1)).isoformat(),
+                           antecedencia=ANTECEDENCIA_RECOMENDADA, previa=previa, modos=_modos_envio())
+
+
+@app.post("/reajustes/<int:reajuste_id>/<acao>")
+@login_obrigatorio
+def reajuste_acao(reajuste_id, acao):
+    with db.conectar() as con:
+        r = con.execute("SELECT * FROM reajustes WHERE id = ? AND status = 'agendado'", (reajuste_id,)).fetchone() or abort(404)
+        if acao == "cancelar":
+            con.execute("UPDATE reajustes SET status = 'cancelado' WHERE id = ?", (reajuste_id,))
+            con.execute("UPDATE notificacoes SET status = 'descartado' WHERE chave = ? AND status = 'pendente'",
+                        (f"reajuste:{reajuste_id}",))
+        elif acao == "aplicar":
+            con.execute("UPDATE planos SET valor = ? WHERE id = ?", (r["valor_novo"], r["plano_id"]))
+            con.execute("UPDATE reajustes SET status = 'aplicado', aplicado_em = ? WHERE id = ?", (db.agora(), reajuste_id))
+        else:
+            abort(404)
+    flash("Reajuste cancelado. Os avisos que ainda estavam na fila foram descartados; quem já recebeu não é avisado de novo."
+          if acao == "cancelar" else "Novo valor aplicado ao plano a partir de hoje.", "ok")
+    return redirect(url_for("reajustes"))
+
+
 # ---------------------------------------------------------------- configurações
 
 PRESETS_SMTP = {
@@ -551,11 +878,19 @@ PRESETS_SMTP = {
 }
 
 
-NOMES_WHATSAPP = {"simulado": "Simulado", "zapi": "Z-API", "evolution": "Evolution API",
+NOMES_WHATSAPP = {"manual": "Pelo meu WhatsApp", "simulado": "Simulado", "zapi": "Z-API", "evolution": "Evolution API",
                   "meta": "Meta Cloud API", "twilio": "Twilio"}
-# (chave, descrição, ícone, gradiente)
+NOMES_EMAIL = {"manual": "Pelo meu e-mail", "smtp": "Servidor de e-mail (SMTP)", "resend": "Resend", "simulado": "Simulado"}
+# (chave, descrição, ícone, cor)
+PROVEDORES_EMAIL_TELA = [
+    ("manual", "Sem configurar nada: você envia da fila com um toque", "fila", "g-azul"),
+    ("smtp", "Envio automático pelo Gmail, Outlook ou o e-mail da academia", "mail", "g-verde"),
+    ("resend", "Envio automático por API, com domínio próprio", "send", "g-violeta"),
+    ("simulado", "Só registra, não envia (para testes)", "lock", "g-cinza"),
+]
 PROVEDORES_WHATSAPP_TELA = [
-    ("simulado", "Só registra, não envia", "lock", "g-cinza"),
+    ("manual", "Sem custo: abre o seu WhatsApp com a mensagem pronta", "fila", "g-verde"),
+    ("simulado", "Só registra, não envia (para testes)", "lock", "g-cinza"),
     ("zapi", "Seu número via QR Code", "whatsapp", "g-verde"),
     ("evolution", "Software livre, servidor próprio", "settings", "g-teal"),
     ("meta", "API oficial do WhatsApp", "building", "g-azul"),
@@ -576,7 +911,9 @@ def configuracoes():
         # senhas e tokens em branco = manter os atuais
         valores.update({k: request.form[k] for k in ajustes.SECRETOS if request.form.get(k)})
         if valores.get("wa_provedor") not in ajustes.PROVEDORES_WHATSAPP:
-            valores["wa_provedor"] = "simulado"
+            valores["wa_provedor"] = "manual"
+        if valores.get("email_provedor") not in ajustes.PROVEDORES_EMAIL:
+            valores["email_provedor"] = "manual"
         if valores.get("smtp_porta") and not valores["smtp_porta"].isdigit():
             flash("A porta SMTP deve ser um número.", "erro")
             return redirect(url_for("configuracoes"))
@@ -594,8 +931,10 @@ def configuracoes():
     valores = {k: ajustes.obter(k) for k in ajustes.CAMPOS}
     salvos = {k for k in ajustes.SECRETOS if valores.pop(k)}
     valores["wa_provedor"] = ajustes.whatsapp()["provedor"]
+    valores["email_provedor"] = ajustes.provedor_email()
     return render_template("configuracoes.html", v=valores, salvos=salvos, presets=PRESETS_SMTP,
-                           provedores=PROVEDORES_WHATSAPP_TELA)
+                           provedores=PROVEDORES_WHATSAPP_TELA, provedores_email=PROVEDORES_EMAIL_TELA,
+                           nomes_wa=NOMES_WHATSAPP, nomes_email=NOMES_EMAIL, modos=_modos_envio())
 
 
 @app.post("/configuracoes/teste-email")
@@ -612,8 +951,10 @@ def teste_email():
     except Exception as e:  # noqa: BLE001 - mostra o erro do servidor de e-mail
         flash(f"Falha ao enviar: {e}", "erro")
         return redirect(url_for("configuracoes"))
-    if status == "simulado":
-        flash("Servidor SMTP não configurado: preencha os dados acima e salve antes de testar.", "erro")
+    if status == "pendente":
+        flash("O e-mail está no modo manual: escolha Servidor de e-mail (SMTP) ou Resend, salve e teste de novo.", "erro")
+    elif status == "simulado":
+        flash("O e-mail está no modo simulado: escolha um provedor de envio e salve antes de testar.", "erro")
     else:
         flash(f"E-mail de teste enviado para {destino}. Confira a caixa de entrada (e o spam).", "ok")
     return redirect(url_for("configuracoes"))
@@ -633,8 +974,10 @@ def teste_whatsapp():
     except Exception as e:  # noqa: BLE001 - mostra o erro do provedor
         flash(f"Falha ao enviar WhatsApp: {e}", "erro")
         return redirect(url_for("configuracoes") + "#whatsapp")
-    if status == "simulado":
-        flash("WhatsApp em modo simulado: escolha um provedor, preencha os dados e salve antes de testar.", "erro")
+    if status in ("simulado", "pendente"):
+        link = f"https://wa.me/{numero}"
+        flash(f"No modo {'manual' if status == 'pendente' else 'simulado'} não há envio automático. "
+              f"Para testar o envio manual, abra {link} no celular.", "erro")
     else:
         flash(f"Mensagem de teste enviada para +{numero}. Confira o WhatsApp.", "ok")
     return redirect(url_for("configuracoes") + "#whatsapp")

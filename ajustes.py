@@ -20,6 +20,9 @@ CAMPOS = {
     "prazo_reembolso_dias": None,
     "academia_telefone": "ACADEMIA_TELEFONE",
     "chave_pix": "CHAVE_PIX",
+    "email_provedor": "EMAIL_PROVEDOR",
+    "resend_api_key": "RESEND_API_KEY",
+    "resend_remetente": "RESEND_REMETENTE",
     "smtp_host": "SMTP_HOST",
     "smtp_porta": "SMTP_PORTA",
     "smtp_usuario": "SMTP_USUARIO",
@@ -48,9 +51,13 @@ PADROES = {"prazo_reembolso_dias": "30", "retencao_cancelamento_pct": "0"}
 DADOS_LEGAIS = ("razao_social", "cnpj", "endereco", "email_contato", "encarregado_nome", "encarregado_email")
 
 # Senhas e tokens: nunca voltam para a tela; campo em branco = manter o atual
-SECRETOS = {"smtp_senha", "zapi_token", "zapi_client_token", "evolution_apikey", "meta_token", "twilio_token"}
+SECRETOS = {"smtp_senha", "resend_api_key", "zapi_token", "zapi_client_token", "evolution_apikey", "meta_token",
+            "twilio_token"}
 
-PROVEDORES_WHATSAPP = ("simulado", "zapi", "evolution", "meta", "twilio")
+# "manual": o sistema monta a mensagem e coloca na fila de envio; você envia com um toque
+# pelo seu WhatsApp ou e-mail (funciona sem contratar nada). "simulado": só registra.
+PROVEDORES_EMAIL = ("manual", "smtp", "resend", "simulado")
+PROVEDORES_WHATSAPP = ("manual", "zapi", "evolution", "meta", "twilio", "simulado")
 
 
 def obter(chave: str) -> str:
@@ -64,6 +71,17 @@ def salvar(valores: dict) -> None:
     for chave, valor in valores.items():
         if chave in CAMPOS:
             db.set_sistema("cfg_" + chave, (valor or "").strip())
+
+
+def provedor_email() -> str:
+    escolhido = obter("email_provedor").lower()
+    if escolhido in PROVEDORES_EMAIL:
+        return escolhido
+    return "smtp" if obter("smtp_host") else "manual"
+
+
+def resend() -> dict:
+    return {"api_key": obter("resend_api_key"), "remetente": obter("resend_remetente")}
 
 
 def smtp() -> dict:
@@ -82,7 +100,7 @@ def smtp() -> dict:
 def whatsapp() -> dict:
     provedor = obter("wa_provedor").lower()
     cfg = {k: obter(k) for k in CAMPOS if k.split("_")[0] in ("zapi", "evolution", "meta", "twilio")}
-    cfg["provedor"] = provedor if provedor in PROVEDORES_WHATSAPP else "simulado"
+    cfg["provedor"] = provedor if provedor in PROVEDORES_WHATSAPP else "manual"
     cfg["evolution_url"] = cfg["evolution_url"].rstrip("/")
     cfg["meta_template_idioma"] = cfg["meta_template_idioma"] or "pt_BR"
     return cfg
