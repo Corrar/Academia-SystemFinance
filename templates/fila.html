@@ -9,7 +9,7 @@
   <a class="btn" href="{{ url_for('configuracoes') }}#envio">{{ icone('raio', 15) }} Ativar envio automático</a>
 </div>
 
-<div class="passos-fila">
+<div class="passos-fila {{ 'so-desktop' if not itens }}">
   <div class="passo"><span class="passo-num">1</span><div><strong>Toque em “Abrir no WhatsApp”</strong><p class="sub">a conversa do aluno abre com a mensagem já escrita</p></div></div>
   <div class="passo"><span class="passo-num">2</span><div><strong>Envie no WhatsApp</strong><p class="sub">confira e toque no botão de enviar</p></div></div>
   <div class="passo"><span class="passo-num">3</span><div><strong>Volte para cá</strong><p class="sub">o aviso já aparece como enviado; siga para o próximo</p></div></div>

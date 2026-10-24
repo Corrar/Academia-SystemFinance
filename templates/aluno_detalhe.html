@@ -7,10 +7,10 @@
 <div class="cabeca">
   <div>
     <h1>{{ aluno.nome }}</h1>
-    <p class="sub">Inscrito desde {{ aluno.data_inscricao|data_br }} · plano <b>{{ aluno.plano_nome or '-' }}</b> ({{ aluno.plano_valor|moeda }})</p>
+    <p class="sub so-desktop">Inscrito desde {{ aluno.data_inscricao|data_br }} · plano <b>{{ aluno.plano_nome or '-' }}</b> ({{ aluno.plano_valor|moeda }})</p>
   </div>
-  <div class="acoes">
-    <a class="btn so-desktop" href="{{ url_for('aluno_editar', aluno_id=aluno.id) }}">{{ icone('pencil', 15) }} Editar</a>
+  <div class="acoes so-desktop">
+    <a class="btn" href="{{ url_for('aluno_editar', aluno_id=aluno.id) }}">{{ icone('pencil', 15) }} Editar</a>
     <form method="post" action="{{ url_for('alternar_ativo', aluno_id=aluno.id) }}"
           {% if aluno.ativo %}data-titulo="Cancelar a matrícula?" data-confirmar="{{ aluno.nome }} deixa de receber cobranças e sai da contagem de mensalistas. Dá para reativar depois." data-ok="Cancelar matrícula" data-perigo
           {% else %}data-titulo="Reativar a matrícula?" data-confirmar="{{ aluno.nome }} volta a receber os avisos de vencimento." data-ok="Reativar"{% endif %}>
@@ -68,6 +68,8 @@
       </div>
       <div class="etapas" aria-hidden="true"><span>{{ aluno.inicio_ciclo[8:10] }}/{{ aluno.inicio_ciclo[5:7] }}</span><span>{{ aluno.data_vencimento[8:10] }}/{{ aluno.data_vencimento[5:7] }}</span></div>
       {% endif %}
+      <div class="dobra-bloco" data-dobra>
+      <div class="dobra-titulo so-celular"><span class="ico p g-cinza">{{ icone('user', 16) }}</span><h2>Contato e dados</h2></div>
       <hr class="divisor">
       <dl class="dados">
         <div><dt>CPF</dt><dd>{{ aluno.cpf or '-' }}</dd></div>
@@ -76,6 +78,7 @@
         <div><dt>E-mail</dt><dd>{{ aluno.email or '-' }}</dd></div>
       </dl>
       {% if aluno.observacoes %}<p class="sub" style="margin-top:14px">{{ aluno.observacoes }}</p>{% endif %}
+      </div>
     </div>
     <div class="tcard-foot">
       <div class="metricas">
@@ -85,10 +88,10 @@
     </div>
   </article>
 
-  <section class="card" id="pagamento">
+  <section class="card" id="pagamento" data-dobra>
     <div class="card-titulo">
       <span class="ico p g-verde">{{ icone('receipt', 17) }}</span>
-      <div><h2>Registrar pagamento</h2><p class="sub">a validade é renovada automaticamente</p></div>
+      <div><h2>Registrar pagamento</h2><p class="sub so-desktop">a validade é renovada automaticamente</p></div>
     </div>
     <form method="post" action="{{ url_for('registrar_pagamento', aluno_id=aluno.id) }}">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
@@ -116,10 +119,10 @@
   </section>
 </div>
 
-<section class="card" id="aviso" style="margin-top:18px">
+<section class="card" id="aviso" style="margin-top:18px" data-dobra>
   <div class="card-titulo">
     <span class="ico p g-azul">{{ icone('send', 17) }}</span>
-    <div><h2>Enviar aviso de vencimento</h2><p class="sub">mensagem que será enviada agora</p></div>
+    <div><h2>Enviar aviso de vencimento</h2><p class="sub so-desktop">mensagem que será enviada agora</p></div>
   </div>
   <div class="msg-preview" tabindex="0" role="region" aria-label="Prévia da mensagem de aviso">{{ preview }}</div>
   <div class="linha-botoes">
@@ -136,7 +139,7 @@
 </section>
 
 <div class="grade-2" style="margin-top:18px">
-  <section class="card">
+  <section class="card" data-dobra>
     <div class="card-titulo"><span class="ico p g-teal">{{ icone('wallet', 17) }}</span><div><h2>Pagamentos</h2><p class="sub">{{ pagamentos|length }} registro(s)</p></div></div>
     <ul class="lista-cel so-celular">
       {% for p in pagamentos %}
@@ -176,8 +179,8 @@
     </table>
     </div>
   </section>
-  <section class="card">
-    <div class="card-titulo"><span class="ico p g-indigo">{{ icone('bell', 17) }}</span><div><h2>Avisos enviados</h2><p class="sub">últimos 20</p></div></div>
+  <section class="card" data-dobra>
+    <div class="card-titulo"><span class="ico p g-indigo">{{ icone('bell', 17) }}</span><div><h2>Avisos enviados</h2><p class="sub so-desktop">últimos 20</p></div></div>
     <ul class="lista-cel so-celular">
       {% for n in avisos %}
       <li><div class="item-cel">
@@ -210,9 +213,15 @@
   </section>
 </div>
 
-<section class="card" style="margin-top:18px">
+<section class="card" style="margin-top:18px" data-dobra>
   <div class="card-titulo"><span class="ico p g-cinza">{{ icone('lock', 17) }}</span>
-    <div><h2>Dados pessoais (LGPD)</h2><p class="sub">use quando o aluno pedir acesso aos dados ou a exclusão deles</p></div></div>
+    <div><h2><span class="so-desktop">Dados pessoais (LGPD)</span><span class="so-celular">Matrícula e dados pessoais</span></h2><p class="sub so-desktop">use quando o aluno pedir acesso aos dados ou a exclusão deles</p></div></div>
+  <form class="so-celular" method="post" action="{{ url_for('alternar_ativo', aluno_id=aluno.id) }}" style="margin-bottom:12px"
+        {% if aluno.ativo %}data-titulo="Cancelar a matrícula?" data-confirmar="{{ aluno.nome }} deixa de receber cobranças e sai da contagem de mensalistas. Dá para reativar depois." data-ok="Cancelar matrícula" data-perigo
+        {% else %}data-titulo="Reativar a matrícula?" data-confirmar="{{ aluno.nome }} volta a receber os avisos de vencimento." data-ok="Reativar"{% endif %}>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <button class="btn {{ 'perigo' if aluno.ativo }}">{{ icone('ban' if aluno.ativo else 'refresh', 15) }} {{ 'Cancelar matrícula' if aluno.ativo else 'Reativar matrícula' }}</button>
+  </form>
   {% if aluno.anonimizado_em %}
     <p class="sub">{{ icone('check', 14) }} Dados pessoais apagados em {{ aluno.anonimizado_em[:10]|data_br }}. Ficaram só os valores pagos.</p>
   {% else %}

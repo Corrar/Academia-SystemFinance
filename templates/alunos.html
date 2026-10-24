@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% from "_componentes.html" import card_aluno with context %}
+{% from "_componentes.html" import card_aluno, cartao_aluno_cel with context %}
 {% block titulo %}Inscritos{% endblock %}
 {% block conteudo %}
 <div class="cabeca">
   <div>
     <h1>Inscritos</h1>
-    <p class="sub">Consulte os mensalistas, a situação e a validade de cada plano.</p>
+    <p class="sub so-desktop">Consulte os mensalistas, a situação e a validade de cada plano.</p>
   </div>
   <div class="acoes">
     <a class="btn" href="{{ url_for('alunos_lote') }}">{{ icone('prancheta', 16) }} Cadastro rápido</a>
@@ -49,7 +49,7 @@
         </div>
       </div>
     </details>
-    <span class="contador" style="margin-left:auto">{{ alunos|length }} de {{ total_geral }} alunos</span>
+    <span class="contador so-desktop" style="margin-left:auto">{{ alunos|length }} de {{ total_geral }} alunos</span>
   </div>
 </form>
 
@@ -70,10 +70,15 @@
       <a class="filtro {{ 'ativo' if status == k }}" {{ 'aria-current="true"'|safe if status == k }} href="{{ url_for('alunos', status=k, **base) }}">{{ v }} <b>{{ contagem[k] }}</b></a>
     {% endfor %}
   </nav>
-  <a class="btn sm fantasma" href="{{ url_for('alunos_exportar', **args) }}" download>{{ icone('planilha', 15) }} Exportar lista</a>
+  <a class="btn sm fantasma so-desktop" href="{{ url_for('alunos_exportar', **args) }}" download>{{ icone('planilha', 15) }} Exportar lista</a>
 </div>
 
-<div class="cards">
+{% if alunos %}
+<ul class="ccards so-celular" aria-label="Inscritos">
+  {% for a in alunos %}{{ cartao_aluno_cel(a) }}{% endfor %}
+</ul>
+{% endif %}
+<div class="cards {{ 'so-desktop' if alunos }}">
   {% for a in alunos %}
     {{ card_aluno(a, csrf_token) }}
   {% else %}

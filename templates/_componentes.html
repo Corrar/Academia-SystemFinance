@@ -98,3 +98,34 @@
   </div>
 </article>
 {% endmacro %}
+
+{# Celular: cartão compacto de aluno (só nome, situação e prazo; o resto fica na ficha) #}
+{% macro cartao_aluno_cel(a) %}
+{% set tom, ic = TONS[a.status] %}
+<li><a class="ccard t-{{ tom }}" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">
+  <span class="ccard-ic" aria-hidden="true">{{ icone(ic, 18) }}</span>
+  <span class="ccard-corpo"><strong>{{ a.nome }}</strong>
+    <small>{{ STATUS_ROTULO[a.status] }}{% if a.status != 'inativo' %} · {{ 'desde' if a.dias < 0 else 'até' }} {{ a.data_vencimento[8:10] }}/{{ a.data_vencimento[5:7] }}{% endif %}</small></span>
+  {% if a.ativo %}
+  <span class="ccard-fim"><b>{{ 'hoje' if a.dias == 0 else (a.dias|abs ~ 'd') }}</b><small>{{ 'vence' if a.dias == 0 else ('atraso' if a.dias < 0 else 'faltam') }}</small></span>
+  {% endif %}
+  {{ icone('chevron-right', 16) }}
+</a></li>
+{% endmacro %}
+
+{# Celular: inadimplente com o atraso, o valor e as duas ações que importam (WhatsApp e receber) #}
+{% macro cartao_inadimplente_cel(a, csrf_token, voltar) %}
+<li class="ccard t-vermelho">
+  <a class="ccard-link" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}">
+    <span class="ccard-ic" aria-hidden="true">{{ a.nome[:1] }}</span>
+    <span class="ccard-corpo"><strong>{{ a.nome }}</strong><small><b>{{ -a.dias }} dias</b> · {{ a.plano_valor|moeda }}</small></span>
+  </a>
+  <form method="post" action="{{ url_for('avisar_aluno', aluno_id=a.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="canal" value="whatsapp">
+    <input type="hidden" name="voltar" value="{{ voltar }}">
+    <button class="ccard-acao whats" {{ 'disabled' if not (a.telefone and a.aceita_whatsapp) }} aria-label="Avisar {{ a.nome }} pelo WhatsApp">{{ icone('whatsapp', 19) }}</button>
+  </form>
+  <a class="ccard-acao principal" href="{{ url_for('aluno_detalhe', aluno_id=a.id) }}#pagamento" aria-label="Receber pagamento de {{ a.nome }}">{{ icone('receipt', 19) }}</a>
+</li>
+{% endmacro %}

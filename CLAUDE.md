@@ -123,6 +123,11 @@ Não rode `playwright install`.
   - confirmação de ação: `<form data-confirmar="texto" data-titulo="..." data-ok="Rótulo" data-perigo>`
     (nunca `onsubmit="return confirm()"`);
   - no celular, tabelas têm uma versão `.lista-cel.so-celular` e a tabela fica em `.so-desktop`;
+  - celular mostra só o essencial: listas de alunos usam cartões compactos `.ccards` (macros `cartao_aluno_cel` e
+    `cartao_inadimplente_cel` em `_componentes.html`) e os `.tcard` ficam em `.so-desktop`; textos de apoio levam `so-desktop`;
+  - seções que abrem com um toque no celular: `data-dobra` (ou `data-dobra="aberto"`) num `.card` com `.card-titulo`, ou num
+    bloco com `.dobra-titulo`; o `interface.js` põe o botão, abre a seção de um link `#id` e a de um campo inválido. No
+    computador o CSS ignora a dobra;
     `.tcard.tocavel` deixa o cartão inteiro clicável; `.acoes-contato` são as ações rápidas;
   - movimento: curvas `--curva` (folhas do iOS) e `--mola`; entrada em cascata com
     `animation-fill-mode: backwards` (com `both` o `transform` final trava o hover); View Transitions

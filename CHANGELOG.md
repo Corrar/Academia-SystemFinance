@@ -5,6 +5,15 @@ Todas as mudanças do sistema, da mais nova para a mais antiga. A versão segue 
 Para publicar uma versão nova, mude o arquivo `VERSION` e adicione a seção aqui:
 a release no GitHub é criada sozinha.
 
+## [1.10.0] - 2026-10-24 · Celular mais simples, em cartões
+
+- **Cartões compactos no celular**: em Inscritos e no painel, cada aluno vira um cartão com só o essencial (nome, situação e quantos dias faltam ou de atraso). O resto fica na ficha, a um toque.
+- **Inadimplentes com ações rápidas**: no painel do celular, cada atrasado mostra os dias e o valor, com os botões redondos de avisar no WhatsApp e de receber.
+- **Seções que abrem com um toque**: no celular, a ficha do aluno (registrar pagamento, aviso, pagamentos, avisos enviados, contato e dados, matrícula) e as Configurações começam fechadas; os atalhos "Receber" e "Avisar" abrem direto a seção certa.
+- **Menos texto na tela**: descrições longas, subtítulos e números secundários ficam só no computador; no painel do celular entra "Vencem em 7 dias" no lugar da receita prevista.
+- **Planos em uma coluna** no celular, sem cortar o valor, e o aviso do topo sem quebrar o texto.
+- **Correção**: o cadastro rápido não estoura mais a largura da tela no computador.
+
 ## [1.9.0] - 2026-10-21 · Integrações gratuitas e versão no sistema
 
 - **PIX copia e cola e QR Code** (padrão do Banco Central) com o valor certo de cada aluno: vai nos avisos de WhatsApp e e-mail, aparece na ficha do aluno para pagar na recepção e na fila de envio.
