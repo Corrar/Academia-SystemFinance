@@ -4,14 +4,14 @@
 <div class="hero">
   <div class="saudacao">Planos da academia</div>
   <h1>Selecione um plano para editar</h1>
-  <p class="sub">Você tem <b>{{ planos|selectattr('ativo')|list|length }}</b> de {{ planos|length }} planos ativos.</p>
+  <p class="sub so-desktop">Você tem <b>{{ planos|selectattr('ativo')|list|length }}</b> de {{ planos|length }} planos ativos.</p>
   <div class="linha-botoes" style="justify-content:center">
     <a class="btn" href="{{ url_for('reajustes') }}">{{ icone('reajuste', 15) }} Avisar reajuste da mensalidade</a>
   </div>
 </div>
 
 {% set cores = ['g-azul', 'g-indigo', 'g-laranja', 'g-teal', 'g-violeta', 'g-verde'] %}
-<div class="modulos">
+<div class="modulos um-cel">
   {% for p in planos %}
   <form method="post" class="modulo {{ '' if p.ativo else 'inativo' }}">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">

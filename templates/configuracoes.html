@@ -4,15 +4,15 @@
 <div class="cabeca">
   <div>
     <h1>Configurações</h1>
-    <p class="sub">Dados da academia, e-mail e WhatsApp usados nos avisos de vencimento.</p>
+    <p class="sub so-desktop">Dados da academia, e-mail e WhatsApp usados nos avisos de vencimento.</p>
   </div>
-  <a class="btn" href="{{ url_for('email_preview') }}" target="_blank">{{ icone('eye', 15) }} Ver modelo do e-mail</a>
+  <a class="btn so-desktop" href="{{ url_for('email_preview') }}" target="_blank">{{ icone('eye', 15) }} Ver modelo do e-mail</a>
 </div>
 
 <form method="post">
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
 
-  <section class="card">
+  <section class="card" data-dobra>
     <div class="card-titulo"><span class="ico p g-indigo">{{ icone('building', 17) }}</span><div><h2>Academia</h2><p class="sub">aparece nos e-mails e mensagens de WhatsApp</p></div></div>
     <div class="form-grid">
       <label class="campo"><span class="rotulo-campo">Nome da academia</span><input name="academia_nome" value="{{ v.academia_nome }}" required></label>
@@ -22,7 +22,7 @@
     </div>
   </section>
 
-  <section class="card" id="empresa">
+  <section class="card" id="empresa" data-dobra>
     <div class="card-titulo">
       <span class="ico p g-violeta">{{ icone('receipt', 17) }}</span>
       <div><h2>Dados legais e documentos</h2>
@@ -65,7 +65,7 @@
     </div></div>
   </section>
 
-  <section class="card" id="envio">
+  <section class="card" id="envio" data-dobra>
     <div class="card-titulo">
       <span class="ico p g-azul">{{ icone('mail', 17) }}</span>
       <div><h2>Envio por e-mail</h2><p class="sub">
@@ -155,7 +155,7 @@
   </label>
 {% endmacro %}
 
-  <section class="card" id="whatsapp">
+  <section class="card" id="whatsapp" data-dobra>
     <div class="card-titulo">
       <span class="ico p g-verde">{{ icone('whatsapp', 17) }}</span>
       <div><h2>Envio por WhatsApp</h2><p class="sub">
@@ -244,7 +244,7 @@
   <div class="linha-botoes"><button class="btn primario">{{ icone('check', 15) }} Salvar configurações</button></div>
 </form>
 
-<form method="post" action="{{ url_for('teste_email') }}" class="card" style="margin-top:18px">
+<form method="post" action="{{ url_for('teste_email') }}" class="card" style="margin-top:18px" data-dobra>
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <div class="card-titulo"><span class="ico p g-verde">{{ icone('send', 17) }}</span><div><h2>Enviar e-mail de teste</h2><p class="sub">salve as configurações antes de testar</p></div></div>
   <div class="barra-busca" style="margin:0">
@@ -253,7 +253,7 @@
   </div>
 </form>
 
-<form method="post" action="{{ url_for('teste_whatsapp') }}" class="card" style="margin-top:18px">
+<form method="post" action="{{ url_for('teste_whatsapp') }}" class="card" style="margin-top:18px" data-dobra>
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <div class="card-titulo"><span class="ico p g-verde">{{ icone('whatsapp', 17) }}</span><div><h2>Enviar WhatsApp de teste</h2><p class="sub">salve as configurações antes de testar</p></div></div>
   <div class="barra-busca" style="margin:0">

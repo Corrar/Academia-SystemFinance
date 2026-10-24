@@ -112,12 +112,12 @@
 </header>
 
 {% if BANCO_TEMPORARIO %}
-<div class="alerta-sistema perigo" role="alert">{{ icone('alert', 16) }} Banco de dados temporário: os dados serão apagados. Conecte um Postgres (Neon) em Storage na Vercel e faça o redeploy.</div>
+<div class="alerta-sistema perigo" role="alert">{{ icone('alert', 16) }} <span>Banco de dados temporário: os dados serão apagados. Conecte um Postgres (Neon) em Storage na Vercel e faça o redeploy.</span></div>
 {% endif %}
 {% if SENHA_PADRAO %}
-<div class="alerta-sistema" role="alert">{{ icone('lock', 16) }} A senha de acesso ainda é a padrão (admin123). Defina <code>ADMIN_SENHA</code> no arquivo .env antes de usar com dados reais.</div>
+<div class="alerta-sistema" role="alert">{{ icone('lock', 16) }} <span>A senha de acesso ainda é a padrão (admin123). Defina <code>ADMIN_SENHA</code> no arquivo .env antes de usar com dados reais.</span></div>
 {% elif empresa.faltando and ep != 'configuracoes' %}
-<div class="alerta-sistema" role="status">{{ icone('alert', 16) }} Faltam dados legais da empresa (razão social, CNPJ, endereço, encarregado de dados). <a href="{{ url_for('configuracoes') }}#empresa">Completar em Configurações</a></div>
+<div class="alerta-sistema" role="status">{{ icone('alert', 16) }} <span>Faltam dados legais da empresa<span class="so-desktop"> (razão social, CNPJ, endereço, encarregado de dados)</span>. <a href="{{ url_for('configuracoes') }}#empresa">Completar<span class="so-desktop"> em Configurações</span></a></span></div>
 {% endif %}
 
 <main class="pagina" id="conteudo" tabindex="-1">

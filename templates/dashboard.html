@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% from "_componentes.html" import card_inadimplente with context %}
+{% from "_componentes.html" import card_inadimplente, cartao_inadimplente_cel with context %}
 {% block titulo %}Dashboard{% endblock %}
 {% block conteudo %}
 <div class="hero">
   <div class="saudacao">Olá, {{ usuario }} 👋</div>
   <h1>Painel de mensalidades</h1>
-  <p class="sub">Hoje é {{ hoje.isoformat()|data_br }} · próxima cobrança automática em <b>{{ proxima_cobranca.strftime('%d/%m às %H:%M') }}</b></p>
+  <p class="sub so-desktop">Hoje é {{ hoje.isoformat()|data_br }} · próxima cobrança automática em <b>{{ proxima_cobranca.strftime('%d/%m às %H:%M') }}</b></p>
 </div>
 
 {% if fila_total or reajustes %}
@@ -14,7 +14,7 @@
   <a class="aviso-topo" href="{{ url_for('fila') }}">
     <span class="ico p g-verde">{{ icone('fila', 17) }}</span>
     <span class="aviso-topo-texto"><strong>{{ fila_total }} aviso{{ 's' if fila_total != 1 }} pronto{{ 's' if fila_total != 1 }} para enviar</strong>
-      <small>As mensagens já estão escritas: envie pelo seu WhatsApp ou e-mail com um toque.</small></span>
+      <small class="so-desktop">As mensagens já estão escritas: envie pelo seu WhatsApp ou e-mail com um toque.</small></span>
     {{ icone('chevron-right', 18) }}
   </a>
   {% endif %}
@@ -22,7 +22,7 @@
   <a class="aviso-topo" href="{{ url_for('reajustes') }}">
     <span class="ico p g-laranja">{{ icone('reajuste', 17) }}</span>
     <span class="aviso-topo-texto"><strong>Reajuste do plano {{ r.plano_nome }} em {{ r.vigencia|data_br }}</strong>
-      <small>{{ r.valor_anterior|moeda }} → {{ r.valor_novo|moeda }} · {{ r.avisados }} aluno(s) avisado(s)</small></span>
+      <small class="so-desktop">{{ r.valor_anterior|moeda }} → {{ r.valor_novo|moeda }} · {{ r.avisados }} aluno(s) avisado(s)</small></span>
     {{ icone('chevron-right', 18) }}
   </a>
   {% endfor %}
@@ -49,7 +49,7 @@
     <div class="det">recebido até hoje <span class="pill verde">{{ r.pagamentos_mes }} pagamentos</span></div>
     <span class="seta" aria-hidden="true">{{ icone('chevron-right', 16) }}</span>
   </a>
-  <div class="kpi">
+  <div class="kpi so-desktop">
     <div class="topo-kpi"><span class="rotulo">Receita mensal prevista</span><span class="ico p g-indigo">{{ icone('trending', 17) }}</span></div>
     <div class="valor" data-contar>{{ r.mrr|moeda }}</div>
     <div class="det">soma dos planos ativos (30 dias)</div>
@@ -60,15 +60,19 @@
     <div class="det">{{ DIAS_INADIMPLENCIA }}+ dias após o vencimento <span class="pill vermelho">{{ r.valor_em_aberto|moeda }}</span></div>
     <span class="seta" aria-hidden="true">{{ icone('chevron-right', 16) }}</span>
   </a>
+  <a class="kpi so-celular" href="#proximos">
+    <div class="topo-kpi"><span class="rotulo">Vencem em 7 dias</span><span class="ico p g-violeta">{{ icone('calendar', 17) }}</span></div>
+    <div class="valor" data-contar>{{ proximos|length }}</div>
+  </a>
 </div>
 
 <div class="secao" id="inadimplentes">
   <div>
-    <h2>Venceram há {{ DIAS_INADIMPLENCIA }} dias ou mais e não pagaram</h2>
-    <p class="sub">Ordenado pelo maior atraso · a trilha mostra os avisos automáticos já enviados</p>
+    <h2><span class="so-desktop">Venceram há {{ DIAS_INADIMPLENCIA }} dias ou mais e não pagaram</span><span class="so-celular">Em atraso há {{ DIAS_INADIMPLENCIA }}+ dias</span></h2>
+    <p class="sub so-desktop">Ordenado pelo maior atraso · a trilha mostra os avisos automáticos já enviados</p>
   </div>
   <div class="acoes">
-    <span class="contador">{{ r.inadimplentes|length }} de {{ r.ativos }} alunos</span>
+    <span class="contador so-desktop">{{ r.inadimplentes|length }} de {{ r.ativos }} alunos</span>
     {% if r.inadimplentes %}
     <form method="post" action="{{ url_for('avisar_inadimplentes') }}" data-titulo="Avisar todos os inadimplentes?"
           data-confirmar="Será enviado um aviso por e-mail e WhatsApp para os {{ r.inadimplentes|length }} alunos em atraso (só pelos canais que cada um autorizou)." data-ok="Enviar avisos">
@@ -78,7 +82,12 @@
     {% endif %}
   </div>
 </div>
-<div class="cards">
+{% if r.inadimplentes %}
+<ul class="ccards so-celular" aria-label="Inadimplentes">
+  {% for a in r.inadimplentes %}{{ cartao_inadimplente_cel(a, csrf_token, url_for('dashboard')) }}{% endfor %}
+</ul>
+{% endif %}
+<div class="cards {{ 'so-desktop' if r.inadimplentes }}">
   {% for a in r.inadimplentes %}
     {{ card_inadimplente(a, csrf_token, url_for('dashboard')) }}
   {% else %}
@@ -90,7 +99,7 @@
   <section class="card">
     <div class="card-titulo">
       <span class="ico p g-azul">{{ icone('trending', 17) }}</span>
-      <div><h2>Faturamento</h2><p class="sub">últimos 6 meses</p></div>
+      <div><h2>Faturamento</h2><p class="sub so-desktop">últimos 6 meses</p></div>
     </div>
     <div class="barras">
       {% for m in r.historico %}
@@ -103,7 +112,7 @@
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" id="proximos">
     <div class="card-titulo">
       <span class="ico p g-violeta">{{ icone('calendar', 17) }}</span>
       <div><h2>Vencem nos próximos 7 dias</h2><p class="sub">{{ proximos|length }} aluno(s)</p></div>

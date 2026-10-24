@@ -327,6 +327,48 @@
     }
   });
 
+  // ---------------- celular: seções que abrem com um toque ----------------
+  // <section class="card" data-dobra> (ou data-dobra="aberto"): no celular o .card-titulo
+  // (ou .dobra-titulo) vira um botão e o resto só aparece quando a pessoa pede.
+  // No computador o CSS ignora a dobra e o conteúdo fica sempre à mostra.
+  function alternarDobra(bloco, aberto) {
+    bloco.classList.toggle("dobrada", !aberto);
+    var botao = bloco.querySelector(":scope > * > .dobra-btn");
+    if (botao) botao.setAttribute("aria-expanded", aberto ? "true" : "false");
+  }
+  function abrirDobraDoAlvo(id) {
+    var alvo = id && document.getElementById(id);
+    var bloco = alvo && alvo.closest("[data-dobra]");
+    if (bloco && bloco.classList.contains("dobrada")) alternarDobra(bloco, true);
+  }
+  document.querySelectorAll("[data-dobra]").forEach(function (bloco) {
+    var titulo = bloco.querySelector(":scope > .card-titulo, :scope > .dobra-titulo");
+    if (!titulo) return;
+    var nome = titulo.querySelector("h2, h3");
+    var botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = "dobra-btn";
+    var rotulo = document.createElement("span");
+    rotulo.className = "sr-only";
+    rotulo.textContent = nome ? nome.textContent.trim() : "Mostrar detalhes";
+    botao.appendChild(rotulo);
+    botao.addEventListener("click", function () { alternarDobra(bloco, bloco.classList.contains("dobrada")); });
+    titulo.appendChild(botao);
+    bloco.classList.add("dobravel");
+    alternarDobra(bloco, bloco.dataset.dobra === "aberto");
+  });
+  abrirDobraDoAlvo(location.hash.slice(1));
+  window.addEventListener("hashchange", function () { abrirDobraDoAlvo(location.hash.slice(1)); });
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest && e.target.closest('a[href^="#"]');
+    if (link) abrirDobraDoAlvo(link.getAttribute("href").slice(1));
+  });
+  // campo obrigatório escondido numa seção fechada: abre a seção para o navegador mostrar o erro
+  document.addEventListener("invalid", function (e) {
+    var bloco = e.target.closest && e.target.closest(".dobrada");
+    if (bloco) alternarDobra(bloco, true);
+  }, true);
+
   // ---------------- números que contam até o valor (indicadores) ----------------
   if (!menosMovimento) {
     var moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
