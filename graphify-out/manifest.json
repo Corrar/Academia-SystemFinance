@@ -174,9 +174,9 @@
     "semantic_hash": ""
   },
   "templates/base.html": {
-    "mtime": 1792838670.0398517,
-    "seen": 1792838878.4727728,
-    "ast_hash": "4578660d89255748989a8dfb50209563",
+    "mtime": 1792838894.2631862,
+    "seen": 1792839699.8866868,
+    "ast_hash": "8ab6e14e3431f13a54d25ed7fb588ee1",
     "semantic_hash": ""
   },
   "templates/configuracoes.html": {
